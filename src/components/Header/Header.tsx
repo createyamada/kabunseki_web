@@ -1,4 +1,5 @@
-import * as React from "react";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
@@ -13,6 +14,25 @@ interface ComponentProps {
 }
 
 const Header: React.FC<ComponentProps> = ({ className }) => {
+  // ***********************************************
+  // *
+  // *  定数宣言
+  // *
+  // ***********************************************
+  // 画面遷移の設定
+  const navigate = useNavigate();
+
+  // ***********************************************
+  // *
+  // *  イベント
+  // *
+  // ***********************************************
+  //ログイン押下時のイベントメソッド
+  const loginButtonClick = () => {
+    //登録後トークン認証画面を開く
+    navigate("/login");
+  };
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
@@ -29,7 +49,9 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             News
           </Typography>
-          <Button color="inherit">Login</Button>
+          <Button color="inherit" onClick={loginButtonClick}>
+            Login
+          </Button>
         </Toolbar>
       </AppBar>
     </Box>

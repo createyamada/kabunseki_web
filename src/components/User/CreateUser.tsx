@@ -11,7 +11,7 @@ const CreateUser: React.FC = () => {
   // *
   // ***********************************************
   // 画面遷移の設定
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
   //Paperタグ内のスタイリングの変数
   const paperStyle = { padding: "50px 20px", width: 600, margin: "20px auto" };
 
@@ -28,22 +28,9 @@ const CreateUser: React.FC = () => {
   const registerButtonClick = () => {
     const user = { username, password };
 
-    //サーバーにURLを投げる処理
-    fetch("http://localhost:8080/user/register", {
-      method: "POST",
-      mode: "cors",
-      headers: {
-        "Content-Type": "application/json",
-        // 'Authorization':'Bearer ' + jwt.access_token
-      },
-      body: JSON.stringify(user),
-    }).then(() => {
-      console.log("New User Added");
-      setUsername(username);
-    });
-
+    // ユーザ登録APIを実行
     //登録後トークン認証画面を開く
-    // navigate('/TokenComplete');
+    navigate("/login");
   };
 
   // ***********************************************

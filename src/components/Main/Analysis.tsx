@@ -70,18 +70,23 @@ const Analysis: React.FC = () => {
     // データをグラフ用に整形
     // 評価データを取得
     const labels: string[] = Object.keys(data.prediction.close_pred);
-    const labelstest: string[] = Object.keys(data.prediction.close_next);
+
+    // データを整形する
+    const pred: number[] = Object.values(data.prediction.close_pred);
+    const real: number[] = Object.values(data.prediction.close_next);
+    // 最後の値を削除
+    real.pop();
 
     setLabelDataStorage(labels);
     setLabelData(labels);
-    setPredDataStorage(Object.values(data.prediction.close_pred));
-    setRealDataStorage(Object.values(data.prediction.close_next));
-    setPredData(Object.values(data.prediction.close_pred));
-    setRealData(Object.values(data.prediction.close_next));
+    setPredDataStorage(pred);
+    setRealDataStorage(real);
+    setPredData(pred);
+    setRealData(real);
 
     setCode(code);
-    setLastValue(realData[labelstest.length - 1]?.toString() || "");
-    setPredValue(predData[labels.length - 1]?.toString() || "");
+    setLastValue(real.at(-1)?.toString() || "");
+    setPredValue(pred.at(-1)?.toString() || "");
     setScore(data.prediction.score);
     setCompany(data.company);
   };
