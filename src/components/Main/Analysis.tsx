@@ -5,6 +5,7 @@ import { Button } from "@mui/material";
 import axios from "axios";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
+import ColorToggleButton from "../UIkit/ColorToggleButton";
 
 const Analysis: React.FC = () => {
   // ***********************************************
@@ -28,6 +29,7 @@ const Analysis: React.FC = () => {
   // *  状態管理
   // *
   // ***********************************************
+  // 表示管理用変数
   const [code, setCode] = useState<string>("");
   const [lastValue, setLastValue] = useState<string>("");
   const [predValue, setPredValue] = useState<string>("");
@@ -41,9 +43,21 @@ const Analysis: React.FC = () => {
   const [company, setCompany] = useState<string>("");
   const [chartData, setChartData] = useState<any>({});
 
+  // 活性制御変数
+  // ローディング中かどうか
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  // 分析が実行されたかどうか
+  const [isExecution, setIsExecution] = useState<boolean>(false);
+
   //Paperタグ内のスタイリングの変数
   const textStyle = { width: "250px", margin: "auto" };
 
+  const buttonContents = {
+    "1年前": 365,
+    "6カ月前": 90,
+    "1カ月前": 30,
+    "1週間前": 7,
+  };
   // ***********************************************
   // *
   // *  イベント
@@ -53,6 +67,8 @@ const Analysis: React.FC = () => {
   // APIより予測を取得
   const get_prediction = async (code: string) => {
     try {
+      // ローディングを開始
+      setIsLoading(true);
       const res = await axios.get<Data>(
         `${process.env.REACT_APP_KABUMMIKE_ARL}/api/stock_price_prediction/?code=${code}`
       );
@@ -61,8 +77,15 @@ const Analysis: React.FC = () => {
       await set_pred_data(data);
       // グラフを描画
       chart_update();
+      // 実行フラグ
+      setIsExecution(true);
     } catch (error) {
       console.error("Error fetching data: ", error);
+      // 実行状態を解除
+      setIsExecution(false);
+    } finally {
+      // ローディング状態を解除
+      setIsLoading(false);
     }
   };
 
@@ -92,10 +115,11 @@ const Analysis: React.FC = () => {
   };
 
   // 期間で絞る
-  const period_narrowing = (prev: number) => {
-    setPredData(predDataStorage.slice(-prev));
-    setRealData(realDataStorage.slice(-prev));
-    setLabelData(labelDataStorage.slice(-prev));
+  // 子コンポーネントから引数を受け取る関数
+  const handleChildClick = (days: number) => {
+    setPredData(predDataStorage.slice(-days));
+    setRealData(realDataStorage.slice(-days));
+    setLabelData(labelDataStorage.slice(-days));
     chart_update();
   };
 
@@ -125,7 +149,7 @@ const Analysis: React.FC = () => {
     <section>
       <h1>重回帰分析による翌日の株価予想</h1>
       <div>
-        {/* ユーザー名テキストボックス */}
+        {/* コードテキストボックス */}
         <TextField
           id="standard-basic"
           label="銘柄コード"
@@ -136,36 +160,31 @@ const Analysis: React.FC = () => {
         />
 
         {/* submitボタン押下 */}
-        <Button variant="contained" onClick={() => get_prediction(code)}>
+        <Button
+          variant="contained"
+          disabled={isLoading}
+          onClick={() => get_prediction(code)}
+        >
           分析開始
         </Button>
       </div>
 
-      <div>
-        <h1>
-          企業名：{company}（株式コード：{code}）
-        </h1>
-        {/* submitボタン押下 */}
-        <Button variant="contained" onClick={() => period_narrowing(365)}>
-          直近1年
-        </Button>
-        <Button variant="contained" onClick={() => period_narrowing(180)}>
-          直近6カ月
-        </Button>
-        <Button variant="contained" onClick={() => period_narrowing(90)}>
-          直近3カ月
-        </Button>
-        <Button variant="contained" onClick={() => period_narrowing(30)}>
-          直近1カ月
-        </Button>
-        <Button variant="contained" onClick={() => period_narrowing(7)}>
-          直近1週間
-        </Button>
-        {chartData.labels ? <Line data={chartData} /> : <p>Loading data...</p>}
-        <h1>前日の価格（実績値）:{lastValue}</h1>
-        <h1>明日の価格（予測値）:{predValue}</h1>
-        <h1>予測スコア:{score}</h1>
-      </div>
+      {isExecution ? (
+        <div>
+          <h1>
+            企業名：{company}（株式コード：{code}）
+          </h1>
+
+          <h1>前日の価格（実績値）:{lastValue}</h1>
+          <h1>明日の価格（予測値）:{predValue}</h1>
+          <h1>予測スコア:{score}</h1>
+          <ColorToggleButton
+            contents={buttonContents}
+            onParentButtonClick={handleChildClick}
+          />
+          <Line data={chartData} />
+        </div>
+      ) : null}
     </section>
   );
 };
