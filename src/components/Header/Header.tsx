@@ -33,6 +33,12 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
     navigate("/login");
   };
 
+  //ログイン押下時のイベントメソッド
+  const topLogoClick = () => {
+    //登録後トークン認証画面を開く
+    navigate("/");
+  };
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
@@ -46,7 +52,12 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
           >
             <MenuIcon />
           </IconButton> */}
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography
+            variant="h6"
+            onClick={topLogoClick}
+            component="div"
+            sx={{ flexGrow: 1 }}
+          >
             KABUNSEKI-WEB
           </Typography>
           <Button color="inherit" onClick={loginButtonClick}>
