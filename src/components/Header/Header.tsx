@@ -37,7 +37,7 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
         <Toolbar>
-          <IconButton
+          {/* <IconButton
             size="large"
             edge="start"
             color="inherit"
@@ -45,9 +45,9 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
             sx={{ mr: 2 }}
           >
             <MenuIcon />
-          </IconButton>
+          </IconButton> */}
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            News
+            KABUNSEKI-WEB
           </Typography>
           <Button color="inherit" onClick={loginButtonClick}>
             Login

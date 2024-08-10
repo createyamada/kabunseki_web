@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useEffect } from "react";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 
@@ -15,9 +15,23 @@ const ColorToggleButton: React.FC<props> = ({
   // isDisable,
   // isVisible,
 }) => {
-  const [alignment, setAlignment] = React.useState<number>(
+  // ***********************************************
+  // *
+  // *  状態管理
+  // *
+  // ***********************************************
+  const [alignment, setAlignment] = useState<number>(
     Object.values(contents)[0]
   );
+
+  // ***********************************************
+  // *
+  // *  イベント
+  // *
+  // ***********************************************
+  useEffect(() => {
+    onParentButtonClick(alignment);
+  }, [alignment]);
 
   const handleChange = (
     event: React.MouseEvent<HTMLElement>,
@@ -25,7 +39,6 @@ const ColorToggleButton: React.FC<props> = ({
   ) => {
     if (newAlignment == null) newAlignment = alignment;
     setAlignment(newAlignment);
-    onParentButtonClick(alignment);
   };
 
   return (

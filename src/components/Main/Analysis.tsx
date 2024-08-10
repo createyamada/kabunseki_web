@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../../assets/css/App.css";
 import TextField from "@mui/material/TextField";
 import { Button } from "@mui/material";
@@ -6,6 +6,7 @@ import axios from "axios";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import ColorToggleButton from "../UIkit/ColorToggleButton";
+import CaptionTable from "../UIkit/CaptionTable";
 
 const Analysis: React.FC = () => {
   // ***********************************************
@@ -22,6 +23,13 @@ const Analysis: React.FC = () => {
   interface Data {
     company: string;
     prediction: Prediction;
+  }
+
+  interface Analysis {
+    company: string;
+    lastValue: string;
+    predValue: string;
+    score: string;
   }
 
   // ***********************************************
@@ -42,6 +50,12 @@ const Analysis: React.FC = () => {
   const [score, setScore] = useState<string>("");
   const [company, setCompany] = useState<string>("");
   const [chartData, setChartData] = useState<any>({});
+  const [analysis, setAnalysis] = useState<Analysis>({
+    company: "",
+    lastValue: "",
+    predValue: "",
+    score: "",
+  });
 
   // 活性制御変数
   // ローディング中かどうか
@@ -52,17 +66,34 @@ const Analysis: React.FC = () => {
   //Paperタグ内のスタイリングの変数
   const textStyle = { width: "250px", margin: "auto" };
 
+  // ボタンを表示するためのオブジェクト
   const buttonContents = {
     "1年前": 365,
     "6カ月前": 90,
     "1カ月前": 30,
     "1週間前": 7,
   };
+
+  // テーブルを表示するためのオブジェクト
+  const tableLabels = [
+    "企業名(英名)",
+    "前日の価格（実績値）",
+    "明日の価格（予測値）",
+    "予想スコア（乖離値）",
+  ];
+
+  const caption =
+    "こちらは重回帰分析を元に作成した予測値です、正しい値ではありません";
   // ***********************************************
   // *
   // *  イベント
   // *
   // ***********************************************
+
+  useEffect(() => {
+    // グラフ表示データに変更があればグラフ再描画
+    chart_update();
+  }, [realData]);
 
   // APIより予測を取得
   const get_prediction = async (code: string) => {
@@ -76,7 +107,7 @@ const Analysis: React.FC = () => {
       // グラフ用にデータを整形しセット
       await set_pred_data(data);
       // グラフを描画
-      chart_update();
+      // await chart_update();
       // 実行フラグ
       setIsExecution(true);
     } catch (error) {
@@ -106,21 +137,22 @@ const Analysis: React.FC = () => {
     setRealDataStorage(real);
     setPredData(pred);
     setRealData(real);
-
     setCode(code);
-    setLastValue(real.at(-1)?.toString() || "");
-    setPredValue(pred.at(-1)?.toString() || "");
-    setScore(data.prediction.score);
-    setCompany(data.company);
+
+    setAnalysis({
+      company: data.company + `（株式コード：${code}）`,
+      lastValue: real.at(-1)?.toString() || "",
+      predValue: pred.at(-1)?.toString() || "",
+      score: data.prediction.score,
+    });
   };
 
   // 期間で絞る
   // 子コンポーネントから引数を受け取る関数
-  const handleChildClick = (days: number) => {
+  const handleChildClick = async (days: number) => {
     setPredData(predDataStorage.slice(-days));
-    setRealData(realDataStorage.slice(-days));
     setLabelData(labelDataStorage.slice(-days));
-    chart_update();
+    setRealData(realDataStorage.slice(-days));
   };
 
   const chart_update = () => {
@@ -171,13 +203,11 @@ const Analysis: React.FC = () => {
 
       {isExecution ? (
         <div>
-          <h1>
-            企業名：{company}（株式コード：{code}）
-          </h1>
-
-          <h1>前日の価格（実績値）:{lastValue}</h1>
-          <h1>明日の価格（予測値）:{predValue}</h1>
-          <h1>予測スコア:{score}</h1>
+          <CaptionTable
+            contents={analysis}
+            labels={tableLabels}
+            caption={caption}
+          />
           <ColorToggleButton
             contents={buttonContents}
             onParentButtonClick={handleChildClick}
