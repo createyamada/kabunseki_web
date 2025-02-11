@@ -101,7 +101,7 @@ const Analysis: React.FC = () => {
       // ローディングを開始
       setIsLoading(true);
       const res = await axios.get<Data>(
-        `${process.env.REACT_APP_KABUMMIKE_ARL}/api/stock_price_prediction/?code=${code}`
+        `${process.env.REACT_APP_KABUMMIKE_URL}/api/stock_price_prediction/?code=${code}`
       );
       const data = res.data;
       // グラフ用にデータを整形しセット
