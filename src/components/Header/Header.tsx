@@ -60,9 +60,9 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
           >
             KABUNSEKI-WEB
           </Typography>
-          <Button color="inherit" onClick={loginButtonClick}>
+          {/* <Button color="inherit" onClick={loginButtonClick}>
             Login
-          </Button>
+          </Button> */}
         </Toolbar>
       </AppBar>
     </Box>

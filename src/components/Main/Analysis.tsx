@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import "../../assets/css/App.css";
 import TextField from "@mui/material/TextField";
-import { Button } from "@mui/material";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+} from "@mui/material";
 import axios from "axios";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
@@ -23,6 +29,7 @@ const Analysis: React.FC = () => {
   interface Data {
     company: string;
     prediction: Prediction;
+    error: String;
   }
 
   interface Analysis {
@@ -37,7 +44,6 @@ const Analysis: React.FC = () => {
   // *  状態管理
   // *
   // ***********************************************
-  // 表示管理用変数
   const [code, setCode] = useState<string>("");
   const [lastValue, setLastValue] = useState<string>("");
   const [predValue, setPredValue] = useState<string>("");
@@ -58,15 +64,13 @@ const Analysis: React.FC = () => {
   });
 
   // 活性制御変数
-  // ローディング中かどうか
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  // 分析が実行されたかどうか
   const [isExecution, setIsExecution] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [openErrorDialog, setOpenErrorDialog] = useState<boolean>(false);
 
-  //Paperタグ内のスタイリングの変数
   const textStyle = { width: "250px", margin: "auto" };
 
-  // ボタンを表示するためのオブジェクト
   const buttonContents = {
     "1年前": 365,
     "6カ月前": 90,
@@ -74,7 +78,6 @@ const Analysis: React.FC = () => {
     "1週間前": 7,
   };
 
-  // テーブルを表示するためのオブジェクト
   const tableLabels = [
     "企業名(英名)",
     "前日の価格（実績値）",
@@ -82,8 +85,6 @@ const Analysis: React.FC = () => {
     "予想スコア（乖離値）",
   ];
 
-  const caption =
-    "こちらは重回帰分析を元に作成した予測値です、正しい値ではありません";
   // ***********************************************
   // *
   // *  イベント
@@ -91,44 +92,50 @@ const Analysis: React.FC = () => {
   // ***********************************************
 
   useEffect(() => {
-    // グラフ表示データに変更があればグラフ再描画
     chart_update();
   }, [realData]);
 
-  // APIより予測を取得
+  const validateCode = (code: string): string | null => {
+    if (!code) return "銘柄コードを入力してください。";
+    if (code.length < 4) return "銘柄コードは4文字以上で入力してください。";
+    if (!/^[A-Z0-9]+$/.test(code))
+      return "銘柄コードは英大文字または数字のみです。";
+    return null;
+  };
+
+  const handleAnalyzeClick = () => {
+    const error = validateCode(code);
+    setErrorMessage(error);
+
+    if (!error) {
+      get_prediction(code);
+    }
+  };
+
   const get_prediction = async (code: string) => {
     try {
-      // ローディングを開始
       setIsLoading(true);
       const res = await axios.get<Data>(
         `${process.env.REACT_APP_KABUMMIKE_URL}/api/stock_price_prediction/?code=${code}`
       );
-      const data = res.data;
-      // グラフ用にデータを整形しセット
-      await set_pred_data(data);
-      // グラフを描画
-      // await chart_update();
-      // 実行フラグ
-      setIsExecution(true);
-    } catch (error) {
-      console.error("Error fetching data: ", error);
-      // 実行状態を解除
+      if (res.status === 200) {
+        await set_pred_data(res.data);
+        setIsExecution(true);
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail;
+      setErrorMessage(errorMessage);
       setIsExecution(false);
+      setOpenErrorDialog(true);
     } finally {
-      // ローディング状態を解除
       setIsLoading(false);
     }
   };
 
   const set_pred_data = async (data: Data) => {
-    // データをグラフ用に整形
-    // 評価データを取得
     const labels: string[] = Object.keys(data.prediction.close_pred);
-
-    // データを整形する
     const pred: number[] = Object.values(data.prediction.close_pred);
     const real: number[] = Object.values(data.prediction.close_next);
-    // 最後の値を削除
     real.pop();
 
     setLabelDataStorage(labels);
@@ -147,8 +154,6 @@ const Analysis: React.FC = () => {
     });
   };
 
-  // 期間で絞る
-  // 子コンポーネントから引数を受け取る関数
   const handleChildClick = async (days: number) => {
     setPredData(predDataStorage.slice(-days));
     setLabelData(labelDataStorage.slice(-days));
@@ -177,11 +182,14 @@ const Analysis: React.FC = () => {
     });
   };
 
+  const handleCloseDialog = () => {
+    setOpenErrorDialog(false);
+  };
+
   return (
     <section>
-      <h1>重回帰分析による翌日の株価予想</h1>
+      <h1>重回帰分析による翌日の日本株個別銘柄株価予想</h1>
       <div>
-        {/* コードテキストボックス */}
         <TextField
           id="standard-basic"
           label="銘柄コード"
@@ -189,13 +197,13 @@ const Analysis: React.FC = () => {
           style={textStyle}
           value={code}
           onChange={(e) => setCode(e.target.value)}
+          error={!!errorMessage}
+          helperText={errorMessage}
         />
-
-        {/* submitボタン押下 */}
         <Button
           variant="contained"
           disabled={isLoading}
-          onClick={() => get_prediction(code)}
+          onClick={handleAnalyzeClick}
         >
           分析開始
         </Button>
@@ -203,11 +211,7 @@ const Analysis: React.FC = () => {
 
       {isExecution ? (
         <div>
-          <CaptionTable
-            contents={analysis}
-            labels={tableLabels}
-            caption={caption}
-          />
+          <CaptionTable contents={analysis} labels={tableLabels} />
           <ColorToggleButton
             contents={buttonContents}
             onParentButtonClick={handleChildClick}
@@ -215,7 +219,21 @@ const Analysis: React.FC = () => {
           <Line data={chartData} />
         </div>
       ) : null}
+
+      {/* エラーダイアログ */}
+      <Dialog open={openErrorDialog} onClose={handleCloseDialog}>
+        <DialogTitle>エラー</DialogTitle>
+        <DialogContent>
+          <p>{errorMessage}</p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">
+            閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
     </section>
   );
 };
+
 export default Analysis;
