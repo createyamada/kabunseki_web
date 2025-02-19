@@ -68,6 +68,7 @@ const Analysis: React.FC = () => {
   const [isExecution, setIsExecution] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [openErrorDialog, setOpenErrorDialog] = useState<boolean>(false);
+  const [tableLabels, setTableLabels] = useState<string[]>([]);
 
   const textStyle = { width: "250px", margin: "auto" };
 
@@ -77,13 +78,6 @@ const Analysis: React.FC = () => {
     "1カ月前": 30,
     "1週間前": 7,
   };
-
-  const tableLabels = [
-    "企業名(英名)",
-    "前日の価格（実績値）",
-    "明日の価格（予測値）",
-    "予想スコア（乖離値）",
-  ];
 
   // ***********************************************
   // *
@@ -133,13 +127,25 @@ const Analysis: React.FC = () => {
   };
 
   const set_pred_data = async (data: Data) => {
-    const labels: string[] = Object.keys(data.prediction.close_pred);
+    const pred_labels: string[] = Object.keys(data.prediction.close_pred);
+    const next_labels: string[] = Object.keys(data.prediction.close_next);
     const pred: number[] = Object.values(data.prediction.close_pred);
     const real: number[] = Object.values(data.prediction.close_next);
     real.pop();
 
-    setLabelDataStorage(labels);
-    setLabelData(labels);
+    setTableLabels([
+      "企業名(英名)",
+      next_labels[next_labels.length - 2] + "の価格（実績値）",
+      pred_labels[pred_labels.length - 1] + "の価格（予測値）",
+      "予想スコア（乖離値）",
+    ]);
+
+    console.log("data");
+    console.log(next_labels);
+    console.log(pred_labels);
+
+    setLabelDataStorage(pred_labels);
+    setLabelData(pred_labels);
     setPredDataStorage(pred);
     setRealDataStorage(real);
     setPredData(pred);
