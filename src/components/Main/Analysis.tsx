@@ -9,85 +9,17 @@ import {
   DialogTitle,
 } from "@mui/material";
 import axios from "axios";
-import { Line } from "react-chartjs-2";
-import "chart.js/auto";
-import ColorToggleButton from "../UIkit/ColorToggleButton";
-import CaptionTable from "../UIkit/CaptionTable";
 
 const Analysis: React.FC = () => {
-  // ***********************************************
-  // *
-  // *  型定義
-  // *
-  // ***********************************************
-  interface Prediction {
-    close_next: Record<string, number>;
-    close_pred: Record<string, number>;
-    score: string;
-  }
-
-  interface Data {
-    company: string;
-    prediction: Prediction;
-    error: String;
-  }
-
-  interface Analysis {
-    company: string;
-    lastValue: string;
-    predValue: string;
-    score: string;
-  }
-
-  // ***********************************************
-  // *
-  // *  状態管理
-  // *
-  // ***********************************************
-  const [code, setCode] = useState<string>("");
-  const [lastValue, setLastValue] = useState<string>("");
-  const [predValue, setPredValue] = useState<string>("");
-  const [predDataStorage, setPredDataStorage] = useState<number[]>([]);
-  const [realDataStorage, setRealDataStorage] = useState<number[]>([]);
-  const [labelDataStorage, setLabelDataStorage] = useState<string[]>([]);
-  const [labelData, setLabelData] = useState<string[]>([]);
-  const [predData, setPredData] = useState<number[]>([]);
-  const [realData, setRealData] = useState<number[]>([]);
-  const [score, setScore] = useState<string>("");
-  const [company, setCompany] = useState<string>("");
-  const [chartData, setChartData] = useState<any>({});
-  const [analysis, setAnalysis] = useState<Analysis>({
-    company: "",
-    lastValue: "",
-    predValue: "",
-    score: "",
-  });
-
-  // 活性制御変数
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isExecution, setIsExecution] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [codes, setCodes] = useState<string[]>([""]);
+  const [errorMessages, setErrorMessages] = useState<string[]>([""]);
   const [openErrorDialog, setOpenErrorDialog] = useState<boolean>(false);
-  const [tableLabels, setTableLabels] = useState<string[]>([]);
+  const [serverResponse, setServerResponse] = useState<any>(null);
 
-  const textStyle = { width: "250px", margin: "auto" };
-
-  const buttonContents = {
-    "1年前": 365,
-    "6カ月前": 90,
-    "1カ月前": 30,
-    "1週間前": 7,
+  const addTextBox = () => {
+    setCodes([...codes, ""]);
+    setErrorMessages([...errorMessages, ""]);
   };
-
-  // ***********************************************
-  // *
-  // *  イベント
-  // *
-  // ***********************************************
-
-  useEffect(() => {
-    chart_update();
-  }, [realData]);
 
   const validateCode = (code: string): string | null => {
     if (!code) return "銘柄コードを入力してください。";
@@ -97,95 +29,30 @@ const Analysis: React.FC = () => {
     return null;
   };
 
-  const handleAnalyzeClick = () => {
-    const error = validateCode(code);
-    setErrorMessage(error);
-
-    if (!error) {
-      get_prediction(code);
-    }
+  const handleInputChange = (index: number, value: string) => {
+    const newCodes = [...codes];
+    newCodes[index] = value;
+    setCodes(newCodes);
   };
 
-  const get_prediction = async (code: string) => {
-    try {
-      setIsLoading(true);
-      const res = await axios.get<Data>(
-        `${process.env.REACT_APP_KABUMMIKE_URL}/api/stock_price_prediction/?code=${code}`
-      );
-      if (res.status === 200) {
-        await set_pred_data(res.data);
-        setIsExecution(true);
-      }
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail;
-      setErrorMessage(errorMessage);
-      setIsExecution(false);
+  const handleAnalyzeClick = async () => {
+    const errors = codes.map((code) => validateCode(code) ?? "");
+    setErrorMessages(errors);
+
+    if (errors.some((error) => error !== null)) {
       setOpenErrorDialog(true);
-    } finally {
-      setIsLoading(false);
+      return;
     }
-  };
 
-  const set_pred_data = async (data: Data) => {
-    const pred_labels: string[] = Object.keys(data.prediction.close_pred);
-    const next_labels: string[] = Object.keys(data.prediction.close_next);
-    const pred: number[] = Object.values(data.prediction.close_pred);
-    const real: number[] = Object.values(data.prediction.close_next);
-    real.pop();
-
-    setTableLabels([
-      "企業名(英名)",
-      next_labels[next_labels.length - 2] + "の価格（実績値）",
-      pred_labels[pred_labels.length - 1] + "の価格（予測値）",
-      "予想スコア（乖離値）",
-    ]);
-
-    console.log("data");
-    console.log(next_labels);
-    console.log(pred_labels);
-
-    setLabelDataStorage(pred_labels);
-    setLabelData(pred_labels);
-    setPredDataStorage(pred);
-    setRealDataStorage(real);
-    setPredData(pred);
-    setRealData(real);
-    setCode(code);
-
-    setAnalysis({
-      company: data.company + `（株式コード：${code}）`,
-      lastValue: real.at(-1)?.toString() || "",
-      predValue: pred.at(-1)?.toString() || "",
-      score: data.prediction.score,
-    });
-  };
-
-  const handleChildClick = async (days: number) => {
-    setPredData(predDataStorage.slice(-days));
-    setLabelData(labelDataStorage.slice(-days));
-    setRealData(realDataStorage.slice(-days));
-  };
-
-  const chart_update = () => {
-    setChartData({
-      labels: labelData,
-      datasets: [
-        {
-          label: "予想株価遷移",
-          data: predData,
-          backgroundColor: "rgba(75,192,192,0.4)",
-          borderColor: "rgba(75,192,192,1)",
-          borderWidth: 1,
-        },
-        {
-          label: "実際株価遷移",
-          data: realData,
-          backgroundColor: "rgba(255,0,0,0.4)",
-          borderColor: "rgba(255,0,0,1)",
-          borderWidth: 1,
-        },
-      ],
-    });
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_SERVER_URL}/api/analyze`,
+        { codes }
+      );
+      setServerResponse(response.data);
+    } catch (error) {
+      console.error("Error fetching data", error);
+    }
   };
 
   const handleCloseDialog = () => {
@@ -194,43 +61,35 @@ const Analysis: React.FC = () => {
 
   return (
     <section>
-      <h1>重回帰分析による翌日の日本株個別銘柄株価予想</h1>
-      <div>
+      <h1>銘柄コード分析</h1>
+      {codes.map((code, index) => (
         <TextField
-          id="standard-basic"
-          label="銘柄コード"
+          key={index}
+          label={`銘柄コード ${index + 1}`}
           variant="standard"
-          style={textStyle}
           value={code}
-          onChange={(e) => setCode(e.target.value)}
-          error={!!errorMessage}
-          helperText={errorMessage}
+          onChange={(e) => handleInputChange(index, e.target.value)}
+          error={!!errorMessages[index]}
+          helperText={errorMessages[index]}
+          style={{ display: "block", marginBottom: "10px" }}
         />
-        <Button
-          variant="contained"
-          disabled={isLoading}
-          onClick={handleAnalyzeClick}
-        >
-          分析開始
-        </Button>
-      </div>
-
-      {isExecution ? (
-        <div>
-          <CaptionTable contents={analysis} labels={tableLabels} />
-          <ColorToggleButton
-            contents={buttonContents}
-            onParentButtonClick={handleChildClick}
-          />
-          <Line data={chartData} />
-        </div>
-      ) : null}
+      ))}
+      <Button
+        variant="contained"
+        onClick={addTextBox}
+        style={{ marginRight: "10px" }}
+      >
+        テキストボックス追加
+      </Button>
+      <Button variant="contained" color="primary" onClick={handleAnalyzeClick}>
+        分析開始
+      </Button>
 
       {/* エラーダイアログ */}
       <Dialog open={openErrorDialog} onClose={handleCloseDialog}>
-        <DialogTitle>エラー</DialogTitle>
+        <DialogTitle>入力エラー</DialogTitle>
         <DialogContent>
-          <p>{errorMessage}</p>
+          <p>入力された銘柄コードにエラーがあります。修正してください。</p>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} color="primary">
@@ -238,6 +97,9 @@ const Analysis: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* サーバーからのレスポンス表示 */}
+      {serverResponse && <pre>{JSON.stringify(serverResponse, null, 2)}</pre>}
     </section>
   );
 };

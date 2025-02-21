@@ -28,10 +28,10 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
   // *
   // ***********************************************
   //ログイン押下時のイベントメソッド
-  const loginButtonClick = () => {
-    //登録後トークン認証画面を開く
-    navigate("/login");
-  };
+  // const loginButtonClick = () => {
+  //   //登録後トークン認証画面を開く
+  //   navigate("/login");
+  // };
 
   //ログイン押下時のイベントメソッド
   const topLogoClick = () => {
