@@ -1,241 +1,366 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import "../../assets/css/App.css";
-import TextField from "@mui/material/TextField";
 import {
+  Alert,
+  Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
 } from "@mui/material";
 import axios from "axios";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import ColorToggleButton from "../UIkit/ColorToggleButton";
-import CaptionTable from "../UIkit/CaptionTable";
+
+interface PredictionInterval {
+  confidence: number;
+  lower_return: number;
+  upper_return: number;
+  lower_price: number;
+  upper_price: number;
+}
+
+interface Metrics {
+  rmse: number;
+  mae: number;
+  baseline_rmse: number;
+  return_rmse: number;
+  return_mae: number;
+  baseline_return_rmse: number;
+  rmse_improvement_rate: number;
+  directional_accuracy: number;
+  test_samples: number;
+  training_samples: number;
+}
+
+interface Backtest {
+  strategy_return: number;
+  buy_and_hold_return: number;
+  sharpe_ratio: number;
+  max_drawdown: number;
+  trade_count: number;
+  transaction_cost_rate: number;
+  signal_threshold: number;
+}
+
+interface ModelResult {
+  walk_forward_rmse: number;
+  holdout_rmse: number;
+}
+
+interface Prediction {
+  close_next: Record<string, number>;
+  close_pred: Record<string, number>;
+  score: number;
+  target?: string;
+  selected_model?: string;
+  predicted_return?: number;
+  prediction_interval?: PredictionInterval;
+  model_comparison?: Record<string, ModelResult>;
+  backtest?: Backtest;
+  metrics?: Metrics;
+}
+
+interface ApiResponse {
+  company: string;
+  prediction: Prediction;
+}
+
+const periods: Record<string, number> = {
+  "1年": 365,
+  "6カ月": 90,
+  "1カ月": 30,
+  "1週間": 7,
+};
+
+const yenFormatter = new Intl.NumberFormat("ja-JP", {
+  style: "currency",
+  currency: "JPY",
+  maximumFractionDigits: 2,
+});
+
+const percentFormatter = new Intl.NumberFormat("ja-JP", {
+  style: "percent",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const formatYen = (value?: number) =>
+  Number.isFinite(value) ? yenFormatter.format(value as number) : "—";
+
+const formatPercent = (value?: number) =>
+  Number.isFinite(value) ? percentFormatter.format(value as number) : "—";
+
+const modelName = (value?: string) => {
+  const names: Record<string, string> = {
+    linear_regression: "線形回帰",
+    ridge: "Ridge回帰",
+    gradient_boosting: "勾配ブースティング",
+  };
+  return value ? names[value] ?? value : "—";
+};
+
+const MetricCard: React.FC<{
+  label: string;
+  value: React.ReactNode;
+  note?: string;
+  accent?: boolean;
+}> = ({ label, value, note, accent = false }) => (
+  <Paper className={`analysis-metric-card${accent ? " is-accent" : ""}`} elevation={0}>
+    <Typography className="analysis-metric-label">{label}</Typography>
+    <Typography className="analysis-metric-value">{value}</Typography>
+    {note && <Typography className="analysis-metric-note">{note}</Typography>}
+  </Paper>
+);
 
 const Analysis: React.FC = () => {
-  // ***********************************************
-  // *
-  // *  型定義
-  // *
-  // ***********************************************
-  interface Prediction {
-    close_next: Record<string, number>;
-    close_pred: Record<string, number>;
-    score: string;
-  }
-
-  interface Data {
-    company: string;
-    prediction: Prediction;
-    error: String;
-  }
-
-  interface Analysis {
-    company: string;
-    lastValue: string;
-    predValue: string;
-    score: string;
-  }
-
-  // ***********************************************
-  // *
-  // *  状態管理
-  // *
-  // ***********************************************
-  const [code, setCode] = useState<string>("");
-  const [lastValue, setLastValue] = useState<string>("");
-  const [predValue, setPredValue] = useState<string>("");
-  const [predDataStorage, setPredDataStorage] = useState<number[]>([]);
-  const [realDataStorage, setRealDataStorage] = useState<number[]>([]);
-  const [labelDataStorage, setLabelDataStorage] = useState<string[]>([]);
-  const [labelData, setLabelData] = useState<string[]>([]);
-  const [predData, setPredData] = useState<number[]>([]);
-  const [realData, setRealData] = useState<number[]>([]);
-  const [score, setScore] = useState<string>("");
-  const [company, setCompany] = useState<string>("");
-  const [chartData, setChartData] = useState<any>({});
-  const [analysis, setAnalysis] = useState<Analysis>({
-    company: "",
-    lastValue: "",
-    predValue: "",
-    score: "",
-  });
-
-  // 活性制御変数
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isExecution, setIsExecution] = useState<boolean>(false);
+  const [code, setCode] = useState("");
+  const [result, setResult] = useState<ApiResponse | null>(null);
+  const [days, setDays] = useState(365);
+  const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [openErrorDialog, setOpenErrorDialog] = useState<boolean>(false);
-  const [tableLabels, setTableLabels] = useState<string[]>([]);
+  const [openErrorDialog, setOpenErrorDialog] = useState(false);
 
-  const textStyle = { width: "250px", margin: "auto" };
-
-  const buttonContents = {
-    "1年前": 365,
-    "6カ月前": 90,
-    "1カ月前": 30,
-    "1週間前": 7,
-  };
-
-  // ***********************************************
-  // *
-  // *  イベント
-  // *
-  // ***********************************************
-
-  useEffect(() => {
-    chart_update();
-  }, [realData]);
-
-  const validateCode = (code: string): string | null => {
-    if (!code) return "銘柄コードを入力してください。";
-    if (code.length < 4) return "銘柄コードは4文字以上で入力してください。";
-    if (!/^[A-Z0-9]+$/.test(code))
-      return "銘柄コードは英大文字または数字のみです。";
+  const validateCode = (value: string): string | null => {
+    if (!value) return "銘柄コードを入力してください。";
+    if (!/^\d{4}$/.test(value)) return "銘柄コードは4桁の数字で入力してください。";
     return null;
   };
 
-  const handleAnalyzeClick = () => {
-    const error = validateCode(code);
-    setErrorMessage(error);
+  const handleAnalyzeClick = async () => {
+    const normalizedCode = code.trim();
+    const validationError = validateCode(normalizedCode);
+    setErrorMessage(validationError);
+    if (validationError) return;
 
-    if (!error) {
-      get_prediction(code);
-    }
-  };
-
-  const get_prediction = async (code: string) => {
     try {
       setIsLoading(true);
-      const res = await axios.get<Data>(
-        `${process.env.REACT_APP_KABUMMIKE_URL}/api/stock_price_prediction/?code=${code}`
+      setResult(null);
+      const response = await axios.get<ApiResponse>(
+        `${process.env.REACT_APP_KABUMMIKE_URL}/api/stock_price_prediction/`,
+        { params: { code: normalizedCode } }
       );
-      if (res.status === 200) {
-        await set_pred_data(res.data);
-        setIsExecution(true);
-      }
+      setResult(response.data);
+      setDays(365);
+      setErrorMessage(null);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail;
-      setErrorMessage(errorMessage);
-      setIsExecution(false);
+      const detail = error.response?.data?.detail;
+      setErrorMessage(
+        typeof detail === "string"
+          ? detail
+          : "分析結果を取得できませんでした。時間をおいて再度お試しください。"
+      );
       setOpenErrorDialog(true);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const set_pred_data = async (data: Data) => {
-    const pred_labels: string[] = Object.keys(data.prediction.close_pred);
-    const next_labels: string[] = Object.keys(data.prediction.close_next);
-    const pred: number[] = Object.values(data.prediction.close_pred);
-    const real: number[] = Object.values(data.prediction.close_next);
-    real.pop();
+  const prediction = result?.prediction;
+  const predictedEntries = useMemo(
+    () => Object.entries(prediction?.close_pred ?? {}),
+    [prediction]
+  );
+  const actualByDate = prediction?.close_next ?? {};
+  const visibleEntries = predictedEntries.slice(-days);
+  const labels = visibleEntries.map(([date]) => date);
+  const predictedPrices = visibleEntries.map(([, value]) => value);
+  const actualPrices = visibleEntries.map(([date]) => {
+    const value = actualByDate[date];
+    return Number.isFinite(value) && value !== 0 ? value : null;
+  });
 
-    setTableLabels([
-      "企業名(英名)",
-      next_labels[next_labels.length - 2] + "の価格（実績値）",
-      pred_labels[pred_labels.length - 1] + "の価格（予測値）",
-      "予想スコア（乖離値）",
-    ]);
+  const latestActualEntry = Object.entries(actualByDate)
+    .filter(([, value]) => Number.isFinite(value) && value !== 0)
+    .at(-1);
+  const nextPredictionEntry = predictedEntries.at(-1);
+  const interval = prediction?.prediction_interval;
+  const metrics = prediction?.metrics;
+  const backtest = prediction?.backtest;
 
-    console.log("data");
-    console.log(next_labels);
-    console.log(pred_labels);
-
-    setLabelDataStorage(pred_labels);
-    setLabelData(pred_labels);
-    setPredDataStorage(pred);
-    setRealDataStorage(real);
-    setPredData(pred);
-    setRealData(real);
-    setCode(code);
-
-    setAnalysis({
-      company: data.company + `（株式コード：${code}）`,
-      lastValue: real.at(-1)?.toString() || "",
-      predValue: pred.at(-1)?.toString() || "",
-      score: data.prediction.score,
-    });
+  const chartData = {
+    labels,
+    datasets: [
+      {
+        label: "予測株価",
+        data: predictedPrices,
+        borderColor: "#2563eb",
+        backgroundColor: "rgba(37, 99, 235, 0.12)",
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.2,
+      },
+      {
+        label: "実績株価",
+        data: actualPrices,
+        borderColor: "#475569",
+        backgroundColor: "rgba(71, 85, 105, 0.08)",
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.2,
+        spanGaps: false,
+      },
+    ],
   };
 
-  const handleChildClick = async (days: number) => {
-    setPredData(predDataStorage.slice(-days));
-    setLabelData(labelDataStorage.slice(-days));
-    setRealData(realDataStorage.slice(-days));
-  };
-
-  const chart_update = () => {
-    setChartData({
-      labels: labelData,
-      datasets: [
-        {
-          label: "予想株価遷移",
-          data: predData,
-          backgroundColor: "rgba(75,192,192,0.4)",
-          borderColor: "rgba(75,192,192,1)",
-          borderWidth: 1,
+  const chartOptions: any = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { position: "top" },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => `${context.dataset.label}: ${formatYen(context.parsed.y)}`,
         },
-        {
-          label: "実際株価遷移",
-          data: realData,
-          backgroundColor: "rgba(255,0,0,0.4)",
-          borderColor: "rgba(255,0,0,1)",
-          borderWidth: 1,
-        },
-      ],
-    });
-  };
-
-  const handleCloseDialog = () => {
-    setOpenErrorDialog(false);
+      },
+    },
+    scales: {
+      y: { ticks: { callback: (value: number) => `¥${value.toLocaleString("ja-JP")}` } },
+    },
   };
 
   return (
-    <section>
-      <h1>重回帰分析による翌日の日本株個別銘柄株価予想</h1>
-      <div>
-        <TextField
-          id="standard-basic"
-          label="銘柄コード"
-          variant="standard"
-          style={textStyle}
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          error={!!errorMessage}
-          helperText={errorMessage}
-        />
-        <Button
-          variant="contained"
-          disabled={isLoading}
-          onClick={handleAnalyzeClick}
-        >
-          分析開始
-        </Button>
-      </div>
-
-      {isExecution ? (
-        <div>
-          <CaptionTable contents={analysis} labels={tableLabels} />
-          <ColorToggleButton
-            contents={buttonContents}
-            onParentButtonClick={handleChildClick}
+    <section className="analysis-page">
+      <Box className="analysis-hero">
+        <Typography component="h1" className="analysis-title">
+          日本株・翌営業日の株価予測
+        </Typography>
+        <Typography className="analysis-subtitle">
+          銘柄コードを入力すると、最新データを使った予測とモデル評価を確認できます。
+        </Typography>
+        <Stack className="analysis-form" direction={{ xs: "column", sm: "row" }} spacing={2}>
+          <TextField
+            label="銘柄コード"
+            placeholder="例：7203"
+            value={code}
+            inputProps={{ inputMode: "numeric", maxLength: 4 }}
+            onChange={(event) => {
+              setCode(event.target.value.replace(/\D/g, ""));
+              setErrorMessage(null);
+            }}
+            onKeyDown={(event) => event.key === "Enter" && handleAnalyzeClick()}
+            error={!!errorMessage && !openErrorDialog}
+            helperText={!openErrorDialog ? errorMessage : null}
+            fullWidth
           />
-          <Line data={chartData} />
-        </div>
-      ) : null}
-
-      {/* エラーダイアログ */}
-      <Dialog open={openErrorDialog} onClose={handleCloseDialog}>
-        <DialogTitle>エラー</DialogTitle>
-        <DialogContent>
-          <p>{errorMessage}</p>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} color="primary">
-            閉じる
+          <Button
+            className="analysis-submit"
+            variant="contained"
+            disabled={isLoading}
+            onClick={handleAnalyzeClick}
+          >
+            {isLoading ? <CircularProgress size={24} color="inherit" /> : "分析する"}
           </Button>
+        </Stack>
+      </Box>
+
+      {result && prediction && (
+        <Stack spacing={3} className="analysis-results">
+          <Box>
+            <Typography component="h2" className="analysis-company">
+              {result.company}
+            </Typography>
+            <Typography color="text.secondary">銘柄コード：{code}</Typography>
+          </Box>
+
+          <Box className="analysis-metric-grid">
+            <MetricCard
+              label={`${latestActualEntry?.[0] ?? "直近"} 終値`}
+              value={formatYen(latestActualEntry?.[1])}
+            />
+            <MetricCard
+              label={`${nextPredictionEntry?.[0] ?? "翌営業日"} 予測株価`}
+              value={formatYen(nextPredictionEntry?.[1])}
+              note={`予測収益率 ${formatPercent(prediction.predicted_return)}`}
+              accent
+            />
+            <MetricCard
+              label="予測レンジ"
+              value={
+                interval
+                  ? `${formatYen(interval.lower_price)} 〜 ${formatYen(interval.upper_price)}`
+                  : "—"
+              }
+              note={interval ? `${Math.round(interval.confidence * 100)}%予測区間` : undefined}
+            />
+            <MetricCard
+              label="採用モデル"
+              value={modelName(prediction.selected_model)}
+              note="時系列交差検証で選択"
+            />
+          </Box>
+
+          {metrics && (
+            <Paper className="analysis-panel" elevation={0}>
+              <Typography component="h3" className="analysis-section-title">モデル評価</Typography>
+              <Box className="analysis-detail-grid">
+                <MetricCard label="価格 RMSE" value={formatYen(metrics.rmse)} note="小さいほど良好" />
+                <MetricCard label="価格 MAE" value={formatYen(metrics.mae)} note="平均的な予測誤差" />
+                <MetricCard
+                  label="ベースライン比改善率"
+                  value={formatPercent(metrics.rmse_improvement_rate)}
+                  note="価格変化なし予測との比較"
+                />
+                <MetricCard
+                  label="方向一致率"
+                  value={formatPercent(metrics.directional_accuracy)}
+                  note={`${metrics.test_samples.toLocaleString()}件で評価`}
+                />
+              </Box>
+            </Paper>
+          )}
+
+          {backtest && (
+            <Paper className="analysis-panel" elevation={0}>
+              <Typography component="h3" className="analysis-section-title">バックテスト</Typography>
+              <Box className="analysis-detail-grid">
+                <MetricCard label="戦略リターン" value={formatPercent(backtest.strategy_return)} />
+                <MetricCard label="買い持ちリターン" value={formatPercent(backtest.buy_and_hold_return)} />
+                <MetricCard label="シャープレシオ" value={backtest.sharpe_ratio.toFixed(2)} />
+                <MetricCard label="最大ドローダウン" value={formatPercent(backtest.max_drawdown)} />
+              </Box>
+            </Paper>
+          )}
+
+          <Paper className="analysis-panel analysis-chart-panel" elevation={0}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", md: "center" }}
+              spacing={2}
+            >
+              <Box>
+                <Typography component="h3" className="analysis-section-title">株価推移</Typography>
+                <Typography color="text.secondary">予測値と実績値を同じ日付で比較します。</Typography>
+              </Box>
+              <ColorToggleButton contents={periods} onParentButtonClick={setDays} />
+            </Stack>
+            <Box className="analysis-chart">
+              <Line data={chartData} options={chartOptions} />
+            </Box>
+          </Paper>
+
+          <Alert severity="warning" variant="outlined">
+            本結果は過去データに基づく統計的な予測で、将来の株価や収益を保証するものではありません。投資判断はご自身の責任で行ってください。
+          </Alert>
+        </Stack>
+      )}
+
+      <Dialog open={openErrorDialog} onClose={() => setOpenErrorDialog(false)}>
+        <DialogTitle>分析できませんでした</DialogTitle>
+        <DialogContent><Typography>{errorMessage}</Typography></DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenErrorDialog(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
     </section>

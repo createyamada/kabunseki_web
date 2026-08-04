@@ -31,7 +31,7 @@ const ColorToggleButton: React.FC<props> = ({
   // ***********************************************
   useEffect(() => {
     onParentButtonClick(alignment);
-  }, [alignment]);
+  }, [alignment, onParentButtonClick]);
 
   const handleChange = (
     event: React.MouseEvent<HTMLElement>,
@@ -47,7 +47,8 @@ const ColorToggleButton: React.FC<props> = ({
       value={alignment}
       exclusive
       onChange={handleChange}
-      aria-label="Platform"
+      aria-label="表示期間"
+      size="small"
     >
       {Object.keys(contents).map((value, index) => (
         <ToggleButton key={index} value={Object.values(contents)[index]}>
