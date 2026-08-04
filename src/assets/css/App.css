@@ -117,6 +117,17 @@
   font-weight: 700 !important;
 }
 
+.analysis-result-heading {
+  padding-left: 16px;
+  border-left: 4px solid #2563eb;
+}
+
+.analysis-result-title {
+  font-size: clamp(1.35rem, 3vw, 1.8rem) !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.02em !important;
+}
+
 .analysis-metric-grid,
 .analysis-detail-grid {
   display: grid;
@@ -184,6 +195,121 @@
   margin-top: 20px;
 }
 
+.analysis-model-table {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.analysis-model-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 16px;
+  padding: 14px 16px;
+  border-top: 1px solid #e2e8f0;
+  align-items: center;
+}
+
+.analysis-model-row:first-child {
+  border-top: 0;
+}
+
+.analysis-model-row.is-header {
+  color: #475569;
+  background: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.analysis-model-row.is-selected {
+  background: #eff6ff;
+  font-weight: 700;
+}
+
+.analysis-selected-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: #1d4ed8;
+  background: #dbeafe;
+  font-size: 0.68rem;
+}
+
+.analysis-topology-panel {
+  padding: 28px;
+  border-color: #c4b5fd;
+  background: linear-gradient(180deg, #fafaff 0%, #fff 48%);
+}
+
+.analysis-topology-heading {
+  border-left-color: #7c3aed;
+}
+
+.analysis-topology-alert {
+  margin: 22px 0;
+}
+
+.analysis-topology-summary {
+  margin-bottom: 24px;
+}
+
+.analysis-topology-summary .analysis-metric-card.is-accent {
+  border-color: #7c3aed;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+}
+
+.analysis-topology-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.analysis-topology-card {
+  padding: 22px;
+  border: 1px solid #ddd6fe;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.analysis-topology-description {
+  margin: -10px 0 18px !important;
+  color: #64748b;
+  font-size: 0.82rem !important;
+}
+
+.analysis-topology-values {
+  display: grid;
+  gap: 10px;
+}
+
+.analysis-topology-values span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.analysis-topology-values span:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.analysis-topology-values strong {
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.analysis-topology-method {
+  margin-top: 20px !important;
+  color: #64748b;
+  font-size: 0.75rem !important;
+  text-align: right;
+}
+
 @keyframes analysis-fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -193,6 +319,10 @@
   .analysis-metric-grid,
   .analysis-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analysis-topology-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -212,6 +342,26 @@
 
   .analysis-chart {
     height: 340px;
+  }
+
+  .analysis-model-table {
+    border: 0;
+  }
+
+  .analysis-model-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px;
+  }
+
+  .analysis-model-row.is-header {
+    display: none;
+  }
+
+  .analysis-topology-panel {
+    padding: 18px;
   }
 }
 

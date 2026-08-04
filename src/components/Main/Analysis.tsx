@@ -52,7 +52,31 @@ interface Backtest {
 
 interface ModelResult {
   walk_forward_rmse: number;
+  fold_scores: number[];
   holdout_rmse: number;
+}
+
+interface PersistenceSummary {
+  feature_count: number;
+  total_persistence: number;
+  max_persistence: number;
+  mean_persistence: number;
+  persistence_entropy: number;
+}
+
+interface TopologicalAnalysis {
+  method: string;
+  role: string;
+  source: string;
+  sample_size: number;
+  point_count: number;
+  embedding_dimension: number;
+  delay: number;
+  h0_connected_components: PersistenceSummary;
+  h1_loops: PersistenceSummary;
+  loop_strength: number;
+  regime: string;
+  interpretation: string;
 }
 
 interface Prediction {
@@ -65,6 +89,7 @@ interface Prediction {
   prediction_interval?: PredictionInterval;
   model_comparison?: Record<string, ModelResult>;
   backtest?: Backtest;
+  topological_analysis?: TopologicalAnalysis;
   metrics?: Metrics;
 }
 
@@ -106,6 +131,18 @@ const modelName = (value?: string) => {
   };
   return value ? names[value] ?? value : "—";
 };
+
+const regimeName = (value?: string) => {
+  const names: Record<string, string> = {
+    low_topological_complexity: "低いトポロジー複雑度",
+    moderate_topological_complexity: "中程度のトポロジー複雑度",
+    high_topological_complexity: "高いトポロジー複雑度",
+  };
+  return value ? names[value] ?? value : "—";
+};
+
+const formatDecimal = (value?: number, digits = 3) =>
+  Number.isFinite(value) ? (value as number).toFixed(digits) : "—";
 
 const MetricCard: React.FC<{
   label: string;
@@ -184,6 +221,8 @@ const Analysis: React.FC = () => {
   const interval = prediction?.prediction_interval;
   const metrics = prediction?.metrics;
   const backtest = prediction?.backtest;
+  const topologicalAnalysis = prediction?.topological_analysis;
+  const modelComparison = Object.entries(prediction?.model_comparison ?? {});
 
   const chartData = {
     labels,
@@ -273,6 +312,15 @@ const Analysis: React.FC = () => {
             <Typography color="text.secondary">銘柄コード：{code}</Typography>
           </Box>
 
+          <Box className="analysis-result-heading">
+            <Typography component="h2" className="analysis-result-title">
+              時系列交差検証による株価予測
+            </Typography>
+            <Typography color="text.secondary">
+              過去から未来へ順番に検証したモデルで、翌営業日の収益率と終値を予測します。
+            </Typography>
+          </Box>
+
           <Box className="analysis-metric-grid">
             <MetricCard
               label={`${latestActualEntry?.[0] ?? "直近"} 終値`}
@@ -320,6 +368,37 @@ const Analysis: React.FC = () => {
             </Paper>
           )}
 
+          {modelComparison.length > 0 && (
+            <Paper className="analysis-panel" elevation={0}>
+              <Typography component="h3" className="analysis-section-title">
+                モデル比較
+              </Typography>
+              <Box className="analysis-model-table" role="table" aria-label="時系列交差検証モデル比較">
+                <Box className="analysis-model-row is-header" role="row">
+                  <span>モデル</span>
+                  <span>ウォークフォワード RMSE</span>
+                  <span>ホールドアウト RMSE</span>
+                </Box>
+                {modelComparison.map(([name, comparison]) => (
+                  <Box
+                    className={`analysis-model-row${name === prediction.selected_model ? " is-selected" : ""}`}
+                    role="row"
+                    key={name}
+                  >
+                    <span>
+                      {modelName(name)}
+                      {name === prediction.selected_model && (
+                        <small className="analysis-selected-badge">採用</small>
+                      )}
+                    </span>
+                    <span>{formatPercent(comparison.walk_forward_rmse)}</span>
+                    <span>{formatPercent(comparison.holdout_rmse)}</span>
+                  </Box>
+                ))}
+              </Box>
+            </Paper>
+          )}
+
           {backtest && (
             <Paper className="analysis-panel" elevation={0}>
               <Typography component="h3" className="analysis-section-title">バックテスト</Typography>
@@ -349,6 +428,85 @@ const Analysis: React.FC = () => {
               <Line data={chartData} options={chartOptions} />
             </Box>
           </Paper>
+
+          {topologicalAnalysis && (
+            <Paper className="analysis-panel analysis-topology-panel" elevation={0}>
+              <Box className="analysis-result-heading analysis-topology-heading">
+                <Typography component="h2" className="analysis-result-title">
+                  トポロジカルデータ解析（TDA）
+                </Typography>
+                <Typography color="text.secondary">
+                  日次リターンの形状から、最近の市場構造の複雑さを捉える補助分析です。
+                </Typography>
+              </Box>
+
+              <Alert severity="info" className="analysis-topology-alert">
+                TDAは株価の上昇・下落を予測するものではありません。時系列交差検証の価格予測とは分けて解釈してください。
+              </Alert>
+
+              <Box className="analysis-metric-grid analysis-topology-summary">
+                <MetricCard
+                  label="市場構造判定"
+                  value={regimeName(topologicalAnalysis.regime)}
+                  note="ヒューリスティック判定"
+                  accent
+                />
+                <MetricCard
+                  label="ループ強度"
+                  value={formatPercent(topologicalAnalysis.loop_strength)}
+                  note="H0に対するH1総永続量の比率"
+                />
+                <MetricCard
+                  label="使用サンプル"
+                  value={`${topologicalAnalysis.sample_size.toLocaleString()}日`}
+                  note={`遅延埋め込み後 ${topologicalAnalysis.point_count.toLocaleString()}点`}
+                />
+                <MetricCard
+                  label="遅延埋め込み"
+                  value={`${topologicalAnalysis.embedding_dimension}次元`}
+                  note={`遅延 ${topologicalAnalysis.delay}営業日`}
+                />
+              </Box>
+
+              <Box className="analysis-topology-grid">
+                <Box className="analysis-topology-card">
+                  <Typography component="h3" className="analysis-section-title">
+                    H0：連結構造
+                  </Typography>
+                  <Typography className="analysis-topology-description">
+                    点群がどのようにまとまり、連結していくかを表します。
+                  </Typography>
+                  <Box className="analysis-topology-values">
+                    <span>特徴数<strong>{topologicalAnalysis.h0_connected_components.feature_count.toLocaleString()}</strong></span>
+                    <span>総永続量<strong>{formatDecimal(topologicalAnalysis.h0_connected_components.total_persistence)}</strong></span>
+                    <span>最大永続量<strong>{formatDecimal(topologicalAnalysis.h0_connected_components.max_persistence)}</strong></span>
+                    <span>平均永続量<strong>{formatDecimal(topologicalAnalysis.h0_connected_components.mean_persistence)}</strong></span>
+                    <span>永続エントロピー<strong>{formatDecimal(topologicalAnalysis.h0_connected_components.persistence_entropy)}</strong></span>
+                  </Box>
+                </Box>
+
+                <Box className="analysis-topology-card">
+                  <Typography component="h3" className="analysis-section-title">
+                    H1：循環・ループ構造
+                  </Typography>
+                  <Typography className="analysis-topology-description">
+                    時系列の点群に現れる循環的な構造の強さを表します。
+                  </Typography>
+                  <Box className="analysis-topology-values">
+                    <span>特徴数<strong>{topologicalAnalysis.h1_loops.feature_count.toLocaleString()}</strong></span>
+                    <span>総永続量<strong>{formatDecimal(topologicalAnalysis.h1_loops.total_persistence)}</strong></span>
+                    <span>最大永続量<strong>{formatDecimal(topologicalAnalysis.h1_loops.max_persistence)}</strong></span>
+                    <span>平均永続量<strong>{formatDecimal(topologicalAnalysis.h1_loops.mean_persistence)}</strong></span>
+                    <span>永続エントロピー<strong>{formatDecimal(topologicalAnalysis.h1_loops.persistence_entropy)}</strong></span>
+                  </Box>
+                </Box>
+              </Box>
+
+              <Typography className="analysis-topology-method">
+                手法：Vietoris–Rips 永続ホモロジー ／ 入力：日次リターンの遅延埋め込み
+              </Typography>
+            </Paper>
+          )}
 
           <Alert severity="warning" variant="outlined">
             本結果は過去データに基づく統計的な予測で、将来の株価や収益を保証するものではありません。投資判断はご自身の責任で行ってください。
