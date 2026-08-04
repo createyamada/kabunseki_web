@@ -79,6 +79,34 @@ interface TopologicalAnalysis {
   interpretation: string;
 }
 
+interface HorizonPrediction {
+  horizon_business_days: number;
+  predicted_return: number;
+  predicted_price: number;
+  up_probability: number;
+  selected_model: string;
+  holdout_return_rmse: number;
+  walk_forward_return_rmse: number;
+}
+
+interface ConfidenceCriteria {
+  rmse_improvement_rate_min: number;
+  directional_accuracy_min: number;
+  rmse_stability_ratio_max: number;
+  sharpe_ratio_min: number;
+  strategy_must_beat_buy_and_hold: boolean;
+  high_topological_complexity_allowed: boolean;
+}
+
+interface ConfidenceAssessment {
+  confidence_score: number;
+  confidence_level: "高" | "中" | "低";
+  trade_signal: "候補" | "監視" | "見送り";
+  risk_reasons: string[];
+  holdout_to_walk_forward_rmse_ratio: number;
+  criteria: ConfidenceCriteria;
+}
+
 interface Prediction {
   close_next: Record<string, number>;
   close_pred: Record<string, number>;
@@ -86,6 +114,9 @@ interface Prediction {
   target?: string;
   selected_model?: string;
   predicted_return?: number;
+  up_probability?: number;
+  horizon_predictions?: Record<string, HorizonPrediction>;
+  confidence?: ConfidenceAssessment;
   prediction_interval?: PredictionInterval;
   model_comparison?: Record<string, ModelResult>;
   backtest?: Backtest;
@@ -223,6 +254,10 @@ const Analysis: React.FC = () => {
   const backtest = prediction?.backtest;
   const topologicalAnalysis = prediction?.topological_analysis;
   const modelComparison = Object.entries(prediction?.model_comparison ?? {});
+  const horizonPredictions = Object.values(prediction?.horizon_predictions ?? {}).sort(
+    (left, right) => left.horizon_business_days - right.horizon_business_days
+  );
+  const confidence = prediction?.confidence;
 
   const chartData = {
     labels,
@@ -321,6 +356,55 @@ const Analysis: React.FC = () => {
             </Typography>
           </Box>
 
+          {confidence && (
+            <Paper className="analysis-confidence-panel" elevation={0}>
+              <Box className="analysis-confidence-score">
+                <Typography className="analysis-confidence-label">総合信頼度</Typography>
+                <Typography className="analysis-confidence-number">
+                  {confidence.confidence_score}
+                  <small>/100</small>
+                </Typography>
+                <Typography className="analysis-confidence-level">
+                  信頼度 {confidence.confidence_level}
+                </Typography>
+              </Box>
+              <Box className="analysis-confidence-details">
+                <Box className="analysis-confidence-summary">
+                  <Box>
+                    <Typography className="analysis-metric-label">1営業日後の上昇確率</Typography>
+                    <Typography className="analysis-confidence-value">
+                      {formatPercent(prediction.up_probability)}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography className="analysis-metric-label">参考判定</Typography>
+                    <Typography
+                      className={`analysis-signal is-${confidence.trade_signal}`}
+                    >
+                      {confidence.trade_signal}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography className="analysis-metric-label">直近精度の安定比</Typography>
+                    <Typography className="analysis-confidence-value">
+                      {formatDecimal(confidence.holdout_to_walk_forward_rmse_ratio, 2)}倍
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box className="analysis-risk-reasons">
+                  <Typography className="analysis-metric-label">判定時に考慮された注意点</Typography>
+                  {confidence.risk_reasons.length > 0 ? (
+                    <ul>
+                      {confidence.risk_reasons.map((reason) => <li key={reason}>{reason}</li>)}
+                    </ul>
+                  ) : (
+                    <Typography className="analysis-no-risk">基準を下回る注意項目はありません。</Typography>
+                  )}
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
           <Box className="analysis-metric-grid">
             <MetricCard
               label={`${latestActualEntry?.[0] ?? "直近"} 終値`}
@@ -347,6 +431,48 @@ const Analysis: React.FC = () => {
               note="時系列交差検証で選択"
             />
           </Box>
+
+          {horizonPredictions.length > 0 && (
+            <Paper className="analysis-panel" elevation={0}>
+              <Typography component="h3" className="analysis-section-title">
+                期間別予測
+              </Typography>
+              <Typography className="analysis-section-description">
+                各期間は、それぞれの予測対象に合わせて時系列検証とモデル選択を行っています。
+              </Typography>
+              <Box className="analysis-horizon-grid">
+                {horizonPredictions.map((forecast) => (
+                  <Box className="analysis-horizon-card" key={forecast.horizon_business_days}>
+                    <Box className="analysis-horizon-header">
+                      <Typography component="h4">
+                        {forecast.horizon_business_days}営業日後
+                      </Typography>
+                      <span>{modelName(forecast.selected_model)}</span>
+                    </Box>
+                    <Typography className="analysis-horizon-price">
+                      {formatYen(forecast.predicted_price)}
+                    </Typography>
+                    <Box className="analysis-horizon-values">
+                      <span>
+                        予測収益率
+                        <strong className={forecast.predicted_return >= 0 ? "is-positive" : "is-negative"}>
+                          {formatPercent(forecast.predicted_return)}
+                        </strong>
+                      </span>
+                      <span>
+                        上昇確率
+                        <strong>{formatPercent(forecast.up_probability)}</strong>
+                      </span>
+                      <span>
+                        ホールドアウトRMSE
+                        <strong>{formatPercent(forecast.holdout_return_rmse)}</strong>
+                      </span>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Paper>
+          )}
 
           {metrics && (
             <Paper className="analysis-panel" elevation={0}>
