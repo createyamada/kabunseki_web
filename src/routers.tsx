@@ -2,7 +2,7 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import { Login, CreateUser } from "./components/User";
 import { NotFound } from "./components/Others";
-import { Analysis } from "./components/Main";
+import { Analysis, Menu, Ranking } from "./components/Main";
 
 const Routers = () => {
   return (
@@ -10,8 +10,9 @@ const Routers = () => {
       {/* ****************************************
        *   その他
        **************************************** */}
-      {/* 分析メイン画面画面 */}
-      <Route path="/" element={<Analysis />} />
+      <Route path="/" element={<Menu />} />
+      <Route path="/analysis" element={<Analysis />} />
+      <Route path="/ranking" element={<Ranking />} />
       {/* ログイン画面 */}
       <Route path="/login" element={<Login />} />
       {/* ユーザ作成画面 */}

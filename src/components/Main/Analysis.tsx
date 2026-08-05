@@ -18,6 +18,7 @@ import axios from "axios";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import ColorToggleButton from "../UIkit/ColorToggleButton";
+import { useSearchParams } from "react-router-dom";
 
 interface PredictionInterval {
   confidence: number;
@@ -303,7 +304,8 @@ const MetricCard: React.FC<{
 );
 
 const Analysis: React.FC = () => {
-  const [code, setCode] = useState("");
+  const [searchParams] = useSearchParams();
+  const [code, setCode] = useState(() => searchParams.get("code")?.replace(/\D/g, "").slice(0, 4) ?? "");
   const [result, setResult] = useState<ApiResponse | null>(null);
   const [days, setDays] = useState(365);
   const [isLoading, setIsLoading] = useState(false);

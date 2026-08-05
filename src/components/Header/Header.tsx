@@ -5,8 +5,6 @@ import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
-import MenuIcon from "@mui/icons-material/Menu";
 
 // コンポーネントの型定義
 interface ComponentProps {
@@ -28,12 +26,6 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
   // *
   // ***********************************************
   //ログイン押下時のイベントメソッド
-  const loginButtonClick = () => {
-    //登録後トークン認証画面を開く
-    navigate("/login");
-  };
-
-  //ログイン押下時のイベントメソッド
   const topLogoClick = () => {
     //登録後トークン認証画面を開く
     navigate("/");
@@ -43,15 +35,6 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
         <Toolbar>
-          {/* <IconButton
-            size="large"
-            edge="start"
-            color="inherit"
-            aria-label="menu"
-            sx={{ mr: 2 }}
-          >
-            <MenuIcon />
-          </IconButton> */}
           <Typography
             variant="h6"
             onClick={topLogoClick}
@@ -60,9 +43,8 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
           >
             KABUNSEKI-WEB
           </Typography>
-          {/* <Button color="inherit" onClick={loginButtonClick}>
-            Login
-          </Button> */}
+          <Button color="inherit" onClick={() => navigate("/analysis")}>個別分析</Button>
+          <Button color="inherit" onClick={() => navigate("/ranking")}>ランキング</Button>
         </Toolbar>
       </AppBar>
     </Box>

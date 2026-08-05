@@ -569,6 +569,250 @@
   color: #b91c1c;
 }
 
+.menu-page,
+.ranking-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 56px 0 72px;
+  text-align: left;
+  color: #0f172a;
+}
+
+.menu-hero {
+  max-width: 760px;
+  margin-bottom: 40px;
+}
+
+.menu-hero .analysis-subtitle {
+  margin-left: 0 !important;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.menu-card {
+  display: flex;
+  min-height: 300px;
+  padding: 32px;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px !important;
+  background: linear-gradient(145deg, #f8fbff, #fff);
+}
+
+.menu-card.is-ranking {
+  border-color: #ddd6fe;
+  background: linear-gradient(145deg, #faf8ff, #fff);
+}
+
+.menu-card-number {
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.menu-card.is-ranking .menu-card-number {
+  color: #7c3aed;
+}
+
+.menu-card h2 {
+  margin: 22px 0 12px;
+  font-size: 1.65rem;
+  font-weight: 750;
+}
+
+.menu-card p {
+  margin-bottom: 28px;
+  color: #64748b;
+  line-height: 1.8;
+}
+
+.menu-card button {
+  margin-top: auto;
+}
+
+.ranking-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+}
+
+.ranking-header .analysis-subtitle {
+  margin-left: 0 !important;
+}
+
+.ranking-header button {
+  min-width: 190px;
+  min-height: 48px;
+  gap: 9px;
+}
+
+.ranking-status {
+  display: flex;
+  gap: 12px;
+  margin: 8px 0 22px;
+  padding: 15px 18px;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px !important;
+}
+
+.ranking-status-dot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.ranking-status-dot.is-running,
+.ranking-status-dot.is-queued,
+.ranking-status-dot.is-already_running {
+  background: #2563eb;
+  box-shadow: 0 0 0 5px #dbeafe;
+  animation: ranking-pulse 1.4s infinite;
+}
+
+.ranking-status-dot.is-completed {
+  background: #16a34a;
+}
+
+.ranking-status-dot.is-failed {
+  background: #dc2626;
+}
+
+.ranking-status div {
+  display: grid;
+  gap: 2px;
+}
+
+.ranking-status small {
+  color: #64748b;
+}
+
+.ranking-alert {
+  margin: 20px 0;
+}
+
+.ranking-loading {
+  display: grid;
+  min-height: 280px;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  color: #64748b;
+}
+
+.ranking-table {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px !important;
+}
+
+.ranking-table th {
+  white-space: nowrap;
+  color: #475569;
+  background: #f8fafc;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.ranking-table td {
+  min-width: 90px;
+  vertical-align: top;
+}
+
+.ranking-table td:nth-child(2) {
+  min-width: 280px;
+}
+
+.ranking-rank {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  color: #475569;
+  background: #f1f5f9;
+  font-weight: 800;
+}
+
+.ranking-rank.is-1 { color: #854d0e; background: #fef9c3; }
+.ranking-rank.is-2 { color: #475569; background: #e2e8f0; }
+.ranking-rank.is-3 { color: #9a3412; background: #ffedd5; }
+
+.ranking-company {
+  display: grid;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ranking-company strong {
+  color: #1d4ed8;
+  font-size: 0.9rem;
+}
+
+.ranking-company span,
+.ranking-submetric {
+  display: block;
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+.ranking-factors {
+  display: grid;
+  gap: 3px;
+  margin-top: 9px;
+}
+
+.ranking-factors small {
+  font-size: 0.66rem;
+}
+
+.ranking-factors .is-positive,
+.value-positive {
+  color: #047857 !important;
+}
+
+.ranking-factors .is-risk,
+.value-negative {
+  color: #b91c1c !important;
+}
+
+.ranking-score {
+  color: #1d4ed8;
+  font-size: 1.15rem;
+}
+
+.ranking-signal {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.ranking-signal.is-候補 { color: #166534; background: #dcfce7; }
+.ranking-signal.is-監視 { color: #92400e; background: #fef3c7; }
+.ranking-signal.is-見送り { color: #991b1b; background: #fee2e2; }
+
+@keyframes ranking-pulse {
+  50% { opacity: 0.45; }
+}
+
 @keyframes analysis-fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -593,6 +837,10 @@
   }
 
   .analysis-horizon-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -651,6 +899,25 @@
   .analysis-confidence-summary {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+
+  .menu-page,
+  .ranking-page {
+    padding-top: 32px;
+  }
+
+  .menu-card {
+    min-height: 260px;
+    padding: 24px;
+  }
+
+  .ranking-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ranking-header button {
+    width: 100%;
   }
 }
 
