@@ -79,6 +79,77 @@ interface TopologicalAnalysis {
   interpretation: string;
 }
 
+interface DirectionClassifier {
+  available: boolean;
+  reason?: string;
+  model?: string;
+  calibration_method?: string;
+  up_probability?: number;
+  raw_up_probability?: number;
+  brier_score?: number;
+  log_loss?: number;
+  directional_accuracy?: number;
+  test_samples?: number;
+}
+
+interface ReturnRisk {
+  available: boolean;
+  expected_return_after_cost?: number;
+  loss_probability?: number;
+  gain_probability?: number;
+  average_gain?: number;
+  average_loss?: number;
+  reward_risk_ratio?: number | null;
+  expected_shortfall_10pct?: number;
+  distribution_quantiles?: Record<string, number>;
+}
+
+interface RelativePrediction {
+  available: boolean;
+  reason?: string;
+  predicted_excess_return?: number;
+  selected_model?: string;
+  holdout_rmse?: number;
+  directional_accuracy?: number;
+  up_probability?: number;
+}
+
+interface IndustryRelativeStrength {
+  available: boolean;
+  benchmark_symbol?: string | null;
+  sector_name?: string | null;
+  benchmark_source?: string | null;
+  relative_strength_20d?: number | null;
+}
+
+interface TopologyMultiWindow {
+  windows: Record<string, TopologicalAnalysis & {
+    previous_loop_strength: number;
+    loop_strength_change: number;
+    loop_strength_change_rate: number;
+  }>;
+  trend: string;
+  mean_loop_strength_change: number | null;
+}
+
+interface FundamentalAssessment {
+  score: number | null;
+  data_coverage: number;
+  evaluated_checks: number;
+  interpretation: string;
+}
+
+interface FundamentalAnalysis {
+  available: boolean;
+  source: string;
+  reason?: string;
+  document_type?: string;
+  published_at?: string;
+  point_in_time_ready?: boolean;
+  metrics?: Record<string, number>;
+  assessment?: FundamentalAssessment;
+}
+
 interface HorizonPrediction {
   horizon_business_days: number;
   predicted_return: number;
@@ -115,12 +186,18 @@ interface Prediction {
   selected_model?: string;
   predicted_return?: number;
   up_probability?: number;
+  direction_classifier?: DirectionClassifier;
+  return_risk?: ReturnRisk;
+  topix_excess_return_prediction?: RelativePrediction;
+  industry_relative_strength?: IndustryRelativeStrength;
   horizon_predictions?: Record<string, HorizonPrediction>;
   confidence?: ConfidenceAssessment;
   prediction_interval?: PredictionInterval;
   model_comparison?: Record<string, ModelResult>;
   backtest?: Backtest;
   topological_analysis?: TopologicalAnalysis;
+  topological_analysis_multi_window?: TopologyMultiWindow;
+  fundamental_analysis?: FundamentalAnalysis;
   metrics?: Metrics;
 }
 
@@ -174,6 +251,43 @@ const regimeName = (value?: string) => {
 
 const formatDecimal = (value?: number, digits = 3) =>
   Number.isFinite(value) ? (value as number).toFixed(digits) : "—";
+
+const compactYenFormatter = new Intl.NumberFormat("ja-JP", {
+  style: "currency",
+  currency: "JPY",
+  notation: "compact",
+  maximumFractionDigits: 2,
+});
+
+const formatCompactYen = (value?: number) =>
+  Number.isFinite(value) ? compactYenFormatter.format(value as number) : "—";
+
+const fundamentalLabels: Record<string, string> = {
+  revenue: "売上高",
+  operating_income: "営業利益",
+  ordinary_income: "経常利益",
+  net_income: "当期純利益",
+  total_assets: "総資産",
+  equity: "純資産",
+  operating_cash_flow: "営業CF",
+  free_cash_flow: "フリーCF",
+  eps: "EPS",
+  operating_margin: "営業利益率",
+  net_margin: "純利益率",
+  equity_ratio: "自己資本比率",
+  revenue_growth: "売上成長率",
+  operating_income_growth: "営業利益成長率",
+  net_income_growth: "純利益成長率",
+  eps_growth: "EPS成長率",
+};
+
+const formatFundamental = (name: string, value: number) => {
+  if (name.includes("margin") || name.includes("ratio") || name.includes("growth")) {
+    return formatPercent(value);
+  }
+  if (name === "eps") return formatYen(value);
+  return formatCompactYen(value);
+};
 
 const MetricCard: React.FC<{
   label: string;
@@ -253,6 +367,12 @@ const Analysis: React.FC = () => {
   const metrics = prediction?.metrics;
   const backtest = prediction?.backtest;
   const topologicalAnalysis = prediction?.topological_analysis;
+  const topologyMultiWindow = prediction?.topological_analysis_multi_window;
+  const directionClassifier = prediction?.direction_classifier;
+  const returnRisk = prediction?.return_risk;
+  const relativePrediction = prediction?.topix_excess_return_prediction;
+  const industryStrength = prediction?.industry_relative_strength;
+  const fundamentals = prediction?.fundamental_analysis;
   const modelComparison = Object.entries(prediction?.model_comparison ?? {});
   const horizonPredictions = Object.values(prediction?.horizon_predictions ?? {}).sort(
     (left, right) => left.horizon_business_days - right.horizon_business_days
@@ -432,6 +552,93 @@ const Analysis: React.FC = () => {
             />
           </Box>
 
+          {(directionClassifier?.available || returnRisk?.available) && (
+            <Paper className="analysis-panel analysis-risk-panel" elevation={0}>
+              <Typography component="h3" className="analysis-section-title">
+                方向予測とリスク分布
+              </Typography>
+              <Typography className="analysis-section-description">
+                回帰による価格予測とは別に、上昇確率を校正した分類器と予測残差から損失リスクを評価します。
+              </Typography>
+              <Box className="analysis-detail-grid">
+                <MetricCard
+                  label="校正済み上昇確率"
+                  value={formatPercent(directionClassifier?.up_probability)}
+                  note={directionClassifier?.available ? "時系列順Isotonic校正" : "評価不可"}
+                  accent
+                />
+                <MetricCard
+                  label="方向分類の一致率"
+                  value={formatPercent(directionClassifier?.directional_accuracy)}
+                  note={`${directionClassifier?.test_samples ?? 0}件で評価`}
+                />
+                <MetricCard
+                  label="損失確率"
+                  value={formatPercent(returnRisk?.loss_probability)}
+                  note={`利益確率 ${formatPercent(returnRisk?.gain_probability)}`}
+                />
+                <MetricCard
+                  label="コスト控除後期待収益率"
+                  value={formatPercent(returnRisk?.expected_return_after_cost)}
+                  note="取引コストとスリッページ控除後"
+                />
+                <MetricCard
+                  label="リワード／リスク"
+                  value={formatDecimal(returnRisk?.reward_risk_ratio ?? undefined, 2)}
+                  note={`平均利益 ${formatPercent(returnRisk?.average_gain)} ／ 平均損失 ${formatPercent(returnRisk?.average_loss)}`}
+                />
+                <MetricCard
+                  label="下位10%期待損失"
+                  value={formatPercent(returnRisk?.expected_shortfall_10pct)}
+                  note="厳しいケースの平均収益率"
+                />
+                <MetricCard
+                  label="分類器 Brier score"
+                  value={formatDecimal(directionClassifier?.brier_score, 3)}
+                  note="0に近いほど確率予測が良好"
+                />
+                <MetricCard
+                  label="分類器 Log loss"
+                  value={formatDecimal(directionClassifier?.log_loss, 3)}
+                  note="確信を伴う誤予測を強く評価"
+                />
+              </Box>
+            </Paper>
+          )}
+
+          {(relativePrediction || industryStrength) && (
+            <Paper className="analysis-panel" elevation={0}>
+              <Typography component="h3" className="analysis-section-title">
+                市場・業種との相対評価
+              </Typography>
+              <Typography className="analysis-section-description">
+                株価の絶対的な騰落とは別に、TOPIXや同業種指数を上回る可能性を確認します。
+              </Typography>
+              <Box className="analysis-detail-grid">
+                <MetricCard
+                  label="TOPIX超過収益率予測"
+                  value={relativePrediction?.available ? formatPercent(relativePrediction.predicted_excess_return) : "—"}
+                  note={relativePrediction?.available ? modelName(relativePrediction.selected_model) : "評価データ不足"}
+                />
+                <MetricCard
+                  label="TOPIX超過方向一致率"
+                  value={relativePrediction?.available ? formatPercent(relativePrediction.directional_accuracy) : "—"}
+                  note={`超過確率 ${formatPercent(relativePrediction?.up_probability)}`}
+                />
+                <MetricCard
+                  label="20日業種相対強度"
+                  value={industryStrength?.available ? formatPercent(industryStrength.relative_strength_20d ?? undefined) : "—"}
+                  note={industryStrength?.sector_name ?? "業種ベンチマークなし"}
+                />
+                <MetricCard
+                  label="業種ベンチマーク"
+                  value={industryStrength?.benchmark_symbol ?? "—"}
+                  note={industryStrength?.benchmark_source ?? undefined}
+                />
+              </Box>
+            </Paper>
+          )}
+
           {horizonPredictions.length > 0 && (
             <Paper className="analysis-panel" elevation={0}>
               <Typography component="h3" className="analysis-section-title">
@@ -555,6 +762,61 @@ const Analysis: React.FC = () => {
             </Box>
           </Paper>
 
+          {fundamentals && (
+            <Paper className="analysis-panel analysis-fundamental-panel" elevation={0}>
+              <Box className="analysis-result-heading analysis-fundamental-heading">
+                <Typography component="h2" className="analysis-result-title">
+                  EDINET財務分析
+                </Typography>
+                <Typography color="text.secondary">
+                  公表日時を基準に取得した開示書類から、企業の収益性・財務健全性を確認します。
+                </Typography>
+              </Box>
+              {fundamentals.available && fundamentals.metrics && fundamentals.assessment ? (
+                <>
+                  <Box className="analysis-metric-grid analysis-fundamental-summary">
+                    <MetricCard
+                      label="財務チェック"
+                      value={fundamentals.assessment.score != null ? `${fundamentals.assessment.score}/100` : "—"}
+                      note={`${fundamentals.assessment.evaluated_checks}項目を評価`}
+                      accent
+                    />
+                    <MetricCard
+                      label="データカバレッジ"
+                      value={formatPercent(fundamentals.assessment.data_coverage)}
+                      note="取得可能項目の割合"
+                    />
+                    <MetricCard
+                      label="開示日時"
+                      value={fundamentals.published_at ? new Date(fundamentals.published_at).toLocaleDateString("ja-JP") : "—"}
+                      note={fundamentals.document_type}
+                    />
+                    <MetricCard
+                      label="データソース"
+                      value="EDINET"
+                      note="公表時点管理済み"
+                    />
+                  </Box>
+                  <Box className="analysis-fundamental-grid">
+                    {Object.entries(fundamentals.metrics).map(([name, value]) => (
+                      <Box className="analysis-fundamental-item" key={name}>
+                        <span>{fundamentalLabels[name] ?? name}</span>
+                        <strong>{formatFundamental(name, value)}</strong>
+                      </Box>
+                    ))}
+                  </Box>
+                  <Typography className="analysis-topology-method">
+                    財務スコアは取得できた項目だけを用いた簡易評価で、株価の割安・割高を直接示すものではありません。
+                  </Typography>
+                </>
+              ) : (
+                <Alert severity="info" className="analysis-topology-alert">
+                  EDINET財務分析を利用できません（{fundamentals.reason ?? "データ未取得"}）。株価予測は財務分析なしで計算されています。
+                </Alert>
+              )}
+            </Paper>
+          )}
+
           {topologicalAnalysis && (
             <Paper className="analysis-panel analysis-topology-panel" elevation={0}>
               <Box className="analysis-result-heading analysis-topology-heading">
@@ -627,6 +889,29 @@ const Analysis: React.FC = () => {
                   </Box>
                 </Box>
               </Box>
+
+              {topologyMultiWindow && Object.keys(topologyMultiWindow.windows).length > 0 && (
+                <Box className="analysis-topology-window-section">
+                  <Typography component="h3" className="analysis-section-title">
+                    期間別の複雑度変化
+                  </Typography>
+                  <Box className="analysis-topology-window-grid">
+                    {Object.entries(topologyMultiWindow.windows).map(([window, value]) => (
+                      <Box className="analysis-topology-window-card" key={window}>
+                        <strong>{window}営業日</strong>
+                        <span>ループ強度 {formatPercent(value.loop_strength)}</span>
+                        <span className={value.loop_strength_change_rate > 0 ? "is-negative" : "is-positive"}>
+                          前期間比 {formatPercent(value.loop_strength_change_rate)}
+                        </span>
+                        <small>{regimeName(value.regime)}</small>
+                      </Box>
+                    ))}
+                  </Box>
+                  <Typography className="analysis-topology-description">
+                    複雑度トレンド：{topologyMultiWindow.trend === "increasing_complexity" ? "上昇" : "低下または安定"}
+                  </Typography>
+                </Box>
+              )}
 
               <Typography className="analysis-topology-method">
                 手法：Vietoris–Rips 永続ホモロジー ／ 入力：日次リターンの遅延埋め込み
