@@ -29,7 +29,12 @@ export const configureAuthInterceptor = () => {
       const requestUrl = String(error.config?.url || "");
       if (error.response?.status === 401 && !requestUrl.endsWith("/api/auth/login")) {
         clearAccessToken();
-        window.location.assign("/login");
+        // Keep the redirect inside React Router. A full page navigation asks the
+        // static host for `/login` directly and can return 404 before React loads.
+        if (window.location.pathname !== "/login") {
+          window.history.replaceState(null, "", "/login");
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        }
       }
       return Promise.reject(error);
     }
