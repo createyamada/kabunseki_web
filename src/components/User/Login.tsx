@@ -1,159 +1,65 @@
-import React, { useState } from "react";
-
-import { useNavigate } from "react-router-dom";
-import Box from "@mui/material/Box";
-import TextField from "@mui/material/TextField";
-import { Container, Paper, Button } from "@mui/material";
-import IconButton from "@mui/material/IconButton";
-import InputAdornment from "@mui/material/InputAdornment";
+import React, { FormEvent, useState } from "react";
+import axios from "axios";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Alert, Box, Button, Container, IconButton, InputAdornment, Paper, TextField, Typography } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import FormControl from "@mui/material/FormControl";
-import Input from "@mui/material/Input";
-import InputLabel from "@mui/material/InputLabel";
+import { setAccessToken } from "../../auth";
+
+type LoginResponse = { access_token: string; token_type: "bearer"; expires_at: string };
 
 const Login: React.FC = () => {
-  // ***********************************************
-  // *
-  // *  定数宣言
-  // *
-  // ***********************************************
-  // 画面遷移の設定
   const navigate = useNavigate();
-  //Paperタグ内のスタイリングの変数
-  const paperStyle = { padding: "50px 20px", width: 600, margin: "20px auto" };
-  const textStyle = { width: "250px", margin: "auto" };
+  const location = useLocation();
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const apiBase = process.env.REACT_APP_KABUMMIKE_URL;
 
-  //UseStateの変数
-  const [form, setForm] = useState({
-    username: "",
-    password: "",
-    showPassword: true,
-  });
-
-  // ***********************************************
-  // *
-  // *  イベント
-  // *
-  // ***********************************************
-
-  // テキストチェンジ時にstateにセットするイベント
-  const handleChange =
-    (prop: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      // 下記処理に条件分岐を行わずにstateをセットしている
-      setForm({ ...form, [prop]: e.target.value });
-      // console.log(event.target.value);
-      console.log("フォームパスワード表示");
-      console.log(form.password);
-    };
-
-  // パスワードの横のアイコンクリックで表示するイベント
-  const handleClickShowPassword = () => {
-    setForm({
-      ...form,
-      showPassword: !form.showPassword,
-    });
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!password || loading) return;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await axios.post<LoginResponse>(`${apiBase}/api/auth/login`, { password });
+      setAccessToken(response.data.access_token);
+      const destination = (location.state as { from?: string } | null)?.from || "/";
+      navigate(destination, { replace: true });
+    } catch (requestError) {
+      if (axios.isAxiosError(requestError) && requestError.response?.status === 401) {
+        setError("パスワードが正しくありません。");
+      } else {
+        setError("ログイン処理に失敗しました。APIサーバーの設定を確認してください。");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // アイコン再度クリックで非表示にするイベント
-  const handleMouseDownPassword = (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
-  ) => {
-    e.preventDefault();
-  };
-
-  // ***********************************************
-  // *
-  // *  ReturnDOM
-  // *
-  // ***********************************************
   return (
-    <Container>
-      <Paper elevation={3} style={paperStyle}>
-        <h1 style={{ color: "blue" }}>
-          <u></u>Login
-        </h1>
-
-        <Box
-          component="form"
-          sx={{
-            "& > :not(style)": { m: 1 },
-          }}
-          noValidate
-          autoComplete="off"
-        >
-          <div>
-            {/* ユーザー名テキストボックス */}
-            <TextField
-              id="standard-basic"
-              label="Username"
-              variant="standard"
-              style={textStyle}
-              value={form.username}
-              onChange={handleChange("username")}
-            />
-          </div>
-
-          <div>
-            <FormControl sx={{ m: 1, width: "25ch" }} variant="standard">
-              <InputLabel htmlFor="standard-adornment-password">
-                Password
-              </InputLabel>
-              <Input
-                id="standard-adornment-password"
-                type={form.showPassword ? "text" : "password"}
-                value={form.password}
-                onChange={handleChange("password")}
-                endAdornment={
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={handleClickShowPassword}
-                      onMouseDown={handleMouseDownPassword}
-                    >
-                      {form.showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                }
-              />
-            </FormControl>
-          </div>
-
-          {/* submitボタン押下 */}
-          <Button
-            variant="contained"
-            onClick={() =>
-              navigate("/auth", {
-                state: { username: form.username, password: form.password },
-                replace: true,
-              })
-            }
-          >
-            Login
+    <Container maxWidth="sm">
+      <Paper elevation={3} sx={{ mt: 10, p: { xs: 3, sm: 5 }, borderRadius: 3 }}>
+        <Typography component="h1" variant="h4" fontWeight={700} gutterBottom>株式分析システム</Typography>
+        <Typography color="text.secondary" sx={{ mb: 3 }}>閲覧するにはサイトパスワードを入力してください。</Typography>
+        <Box component="form" onSubmit={submit}>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          <TextField
+            autoFocus fullWidth required label="パスワード"
+            type={showPassword ? "text" : "password"} value={password}
+            autoComplete="current-password" onChange={(event) => setPassword(event.target.value)}
+            InputProps={{ endAdornment: (
+              <InputAdornment position="end">
+                <IconButton aria-label={showPassword ? "パスワードを隠す" : "パスワードを表示"} onClick={() => setShowPassword((value) => !value)} edge="end">
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            ) }}
+          />
+          <Button fullWidth type="submit" variant="contained" size="large" disabled={!password || loading} sx={{ mt: 3 }}>
+            {loading ? "確認中…" : "ログイン"}
           </Button>
-
-          {/* 新規作成ボタン押下 */}
-          <Button
-            variant="contained"
-            onClick={() =>
-              //クリック時のユーザー作成画面に遷移
-              navigate("/createUser")
-            }
-          >
-            Create
-          </Button>
-
-          <div>
-            {/* パスワード忘れたとき */}
-            <Button
-              onClick={() =>
-                //クリック時パスワードリセット画面に遷移
-                navigate("/ResetPassword")
-              }
-            >
-              パスワードを忘れたとき
-            </Button>
-          </div>
         </Box>
       </Paper>
     </Container>

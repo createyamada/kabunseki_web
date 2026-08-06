@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  LinearProgress,
   Paper,
   Table,
   TableBody,
@@ -15,6 +16,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { getAuthorizationHeaders } from "../../auth";
 
 interface RankingItem {
   rank: number;
@@ -56,8 +58,25 @@ interface RankingStatus {
   screening_count?: number;
   analyzed_count?: number;
   failed_count?: number;
+  processed_count?: number;
+  total_count?: number;
+  phase?: string;
+  phase_label?: string;
+  progress_percent?: number;
+  elapsed_seconds?: number;
+  estimated_remaining_seconds?: number | null;
+  estimated_completion_at?: string | null;
+  current_code?: string;
   error?: string;
 }
+
+const formatDuration = (seconds?: number | null) => {
+  if (seconds == null || !Number.isFinite(seconds)) return "計算中";
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))}秒`;
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 60) return `約${minutes}分`;
+  return `約${Math.floor(minutes / 60)}時間${minutes % 60}分`;
+};
 
 const formatPercent = (value?: number | null) =>
   Number.isFinite(value) ? `${((value as number) * 100).toFixed(2)}%` : "—";
@@ -81,12 +100,15 @@ const Ranking: React.FC = () => {
   const loadRanking = useCallback(async () => {
     const response = await axios.get<RankingResponse>(`${apiBase}/api/prime-ranking/`, {
       params: { limit: 10 },
+      headers: getAuthorizationHeaders(),
     });
     setRanking(response.data);
   }, [apiBase]);
 
   const loadStatus = useCallback(async () => {
-    const response = await axios.get<RankingStatus>(`${apiBase}/api/prime-ranking/status`);
+    const response = await axios.get<RankingStatus>(`${apiBase}/api/prime-ranking/status`, {
+      headers: getAuthorizationHeaders(),
+    });
     setStatus(response.data);
     return response.data;
   }, [apiBase]);
@@ -133,6 +155,7 @@ const Ranking: React.FC = () => {
       setError(null);
       const response = await axios.post<RankingStatus>(`${apiBase}/api/prime-ranking/refresh`, null, {
         params: { limit: 10, shortlist_size: 50 },
+        headers: getAuthorizationHeaders(),
       });
       setStatus(response.data);
     } catch (requestError: any) {
@@ -159,17 +182,33 @@ const Ranking: React.FC = () => {
 
       {status && (
         <Paper className="ranking-status" elevation={0}>
-          <span className={`ranking-status-dot is-${status.status}`} />
-          <Box>
-            <strong>{isRunning ? "ランキングを生成しています" : status.status === "failed" ? "生成に失敗しました" : "最新ランキング"}</strong>
-            <small>
-              {isRunning
-                ? `分析済み ${status.analyzed_count ?? 0}件 / スクリーニング ${status.screening_count ?? "—"}件`
-                : ranking?.generated_at
-                  ? `生成日時 ${new Date(ranking.generated_at).toLocaleString("ja-JP")}`
-                  : "まだランキングが生成されていません"}
-            </small>
+          <Box className="ranking-status-heading">
+            <span className={`ranking-status-dot is-${status.status}`} />
+            <Box>
+              <strong>{isRunning ? status.phase_label ?? "ランキングを生成しています" : status.status === "failed" ? "生成に失敗しました" : "最新ランキング"}</strong>
+              <small>
+                {isRunning
+                  ? `処理済み ${status.processed_count ?? 0} / ${status.total_count ?? "—"}件（成功 ${status.analyzed_count ?? 0}・失敗 ${status.failed_count ?? 0}）${status.current_code ? `｜現在 ${status.current_code}` : ""}`
+                  : ranking?.generated_at
+                    ? `生成日時 ${new Date(ranking.generated_at).toLocaleString("ja-JP")}`
+                    : "まだランキングが生成されていません"}
+              </small>
+            </Box>
+            {isRunning && <strong className="ranking-progress-value">{Math.round(status.progress_percent ?? 0)}%</strong>}
           </Box>
+          {isRunning && (
+            <>
+              <LinearProgress variant="determinate" value={status.progress_percent ?? 0} className="ranking-progress" />
+              <Box className="ranking-progress-meta">
+                <span>経過 {formatDuration(status.elapsed_seconds)}</span>
+                <span>残り {formatDuration(status.estimated_remaining_seconds)}</span>
+                <span>{status.estimated_completion_at ? `完了見込み ${new Date(status.estimated_completion_at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}` : "完了時刻を計算中"}</span>
+              </Box>
+              <Alert severity="info" className="ranking-concurrent-note" action={<Button color="inherit" onClick={() => navigate("/analysis")}>個別分析を開く</Button>}>
+                ランキング生成中も個別銘柄の分析を利用できます。
+              </Alert>
+            </>
+          )}
         </Paper>
       )}
 

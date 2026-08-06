@@ -19,6 +19,7 @@ import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import ColorToggleButton from "../UIkit/ColorToggleButton";
 import { useSearchParams } from "react-router-dom";
+import { getAuthorizationHeaders } from "../../auth";
 
 interface PredictionInterval {
   confidence: number;
@@ -329,7 +330,7 @@ const Analysis: React.FC = () => {
       setResult(null);
       const response = await axios.get<ApiResponse>(
         `${process.env.REACT_APP_KABUMMIKE_URL}/api/stock_price_prediction/`,
-        { params: { code: normalizedCode } }
+        { params: { code: normalizedCode }, headers: getAuthorizationHeaders() }
       );
       setResult(response.data);
       setDays(365);

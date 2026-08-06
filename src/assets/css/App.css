@@ -654,13 +654,47 @@
 }
 
 .ranking-status {
-  display: flex;
+  display: grid;
   gap: 12px;
   margin: 8px 0 22px;
   padding: 15px 18px;
   align-items: center;
   border: 1px solid #e2e8f0;
   border-radius: 12px !important;
+}
+
+.ranking-status-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ranking-status-heading > div {
+  flex: 1;
+}
+
+.ranking-progress-value {
+  color: #1d4ed8;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ranking-progress {
+  height: 9px !important;
+  border-radius: 999px;
+}
+
+.ranking-progress-meta {
+  display: flex !important;
+  grid-template-columns: none !important;
+  flex-wrap: wrap;
+  gap: 8px 22px !important;
+  color: #475569;
+  font-size: 0.82rem;
+}
+
+.ranking-concurrent-note {
+  margin-top: 2px;
 }
 
 .ranking-status-dot {
