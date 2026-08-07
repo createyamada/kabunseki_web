@@ -21,7 +21,9 @@ import { getAuthorizationHeaders } from "../../auth";
 interface RankingItem {
   rank: number;
   code: string;
-  company: string;
+  company?: string | null;
+  company_name?: string | null;
+  name?: string | null;
   sector?: string;
   total_score: number;
   trade_signal?: string;
@@ -67,8 +69,12 @@ interface RankingStatus {
   estimated_remaining_seconds?: number | null;
   estimated_completion_at?: string | null;
   current_code?: string;
+  current_company?: string;
   error?: string;
 }
+
+const companyName = (item: RankingItem) =>
+  item.company?.trim() || item.company_name?.trim() || item.name?.trim() || `銘柄 ${item.code}`;
 
 const formatDuration = (seconds?: number | null) => {
   if (seconds == null || !Number.isFinite(seconds)) return "計算中";
@@ -188,7 +194,7 @@ const Ranking: React.FC = () => {
               <strong>{isRunning ? status.phase_label ?? "ランキングを生成しています" : status.status === "failed" ? "生成に失敗しました" : "最新ランキング"}</strong>
               <small>
                 {isRunning
-                  ? `処理済み ${status.processed_count ?? 0} / ${status.total_count ?? "—"}件（成功 ${status.analyzed_count ?? 0}・失敗 ${status.failed_count ?? 0}）${status.current_code ? `｜現在 ${status.current_code}` : ""}`
+                  ? `処理済み ${status.processed_count ?? 0} / ${status.total_count ?? "—"}件（成功 ${status.analyzed_count ?? 0}・失敗 ${status.failed_count ?? 0}）${status.current_code ? `｜現在 ${status.current_company ? `${status.current_company}（${status.current_code}）` : status.current_code}` : ""}`
                   : ranking?.generated_at
                     ? `生成日時 ${new Date(ranking.generated_at).toLocaleString("ja-JP")}`
                     : "まだランキングが生成されていません"}
@@ -237,7 +243,7 @@ const Ranking: React.FC = () => {
                   <TableCell><span className={`ranking-rank is-${item.rank}`}>{item.rank}</span></TableCell>
                   <TableCell>
                     <button className="ranking-company" onClick={() => navigate(`/analysis?code=${item.code}`)}>
-                      <strong>{item.company}</strong>
+                      <strong>{companyName(item)}</strong>
                       <span>{item.code}・{item.sector ?? "業種不明"}</span>
                     </button>
                     <Box className="ranking-factors">
