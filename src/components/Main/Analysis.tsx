@@ -197,8 +197,8 @@ interface Prediction {
   prediction_interval?: PredictionInterval;
   model_comparison?: Record<string, ModelResult>;
   backtest?: Backtest;
-  topological_analysis?: TopologicalAnalysis;
-  topological_analysis_multi_window?: TopologyMultiWindow;
+  topological_analysis?: TopologicalAnalysis | null;
+  topological_analysis_multi_window?: TopologyMultiWindow | null;
   fundamental_analysis?: FundamentalAnalysis;
   metrics?: Metrics;
 }

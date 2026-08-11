@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  LinearProgress,
   Paper,
   Table,
   TableBody,
@@ -76,14 +75,6 @@ interface RankingStatus {
 const companyName = (item: RankingItem) =>
   item.company?.trim() || item.company_name?.trim() || item.name?.trim() || `銘柄 ${item.code}`;
 
-const formatDuration = (seconds?: number | null) => {
-  if (seconds == null || !Number.isFinite(seconds)) return "計算中";
-  if (seconds < 60) return `${Math.max(1, Math.round(seconds))}秒`;
-  const minutes = Math.ceil(seconds / 60);
-  if (minutes < 60) return `約${minutes}分`;
-  return `約${Math.floor(minutes / 60)}時間${minutes % 60}分`;
-};
-
 const formatPercent = (value?: number | null) =>
   Number.isFinite(value) ? `${((value as number) * 100).toFixed(2)}%` : "—";
 
@@ -133,28 +124,6 @@ const Ranking: React.FC = () => {
     initialize();
   }, [loadRanking, loadStatus]);
 
-  useEffect(() => {
-    const active = refreshing || status?.status === "queued" || status?.status === "running" || status?.status === "already_running";
-    if (!active) return;
-
-    const timer = window.setInterval(async () => {
-      try {
-        const nextStatus = await loadStatus();
-        if (nextStatus.status === "completed") {
-          await loadRanking();
-          setRefreshing(false);
-        } else if (nextStatus.status === "failed") {
-          setRefreshing(false);
-          setError(nextStatus.error ?? "ランキング生成に失敗しました。");
-        }
-      } catch {
-        setRefreshing(false);
-        setError("ランキングの処理状況を取得できませんでした。");
-      }
-    }, 3000);
-    return () => window.clearInterval(timer);
-  }, [refreshing, status?.status, loadRanking, loadStatus]);
-
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
@@ -200,16 +169,13 @@ const Ranking: React.FC = () => {
                     : "まだランキングが生成されていません"}
               </small>
             </Box>
-            {isRunning && <strong className="ranking-progress-value">{Math.round(status.progress_percent ?? 0)}%</strong>}
+            {isRunning && <CircularProgress size={24} />}
           </Box>
           {isRunning && (
             <>
-              <LinearProgress variant="determinate" value={status.progress_percent ?? 0} className="ranking-progress" />
-              <Box className="ranking-progress-meta">
-                <span>経過 {formatDuration(status.elapsed_seconds)}</span>
-                <span>残り {formatDuration(status.estimated_remaining_seconds)}</span>
-                <span>{status.estimated_completion_at ? `完了見込み ${new Date(status.estimated_completion_at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}` : "完了時刻を計算中"}</span>
-              </Box>
+              <Alert severity="info" className="ranking-concurrent-note">
+                ランキングを生成しています。画面を再表示したときに最新の処理状態を確認します。
+              </Alert>
               <Alert severity="info" className="ranking-concurrent-note" action={<Button color="inherit" onClick={() => navigate("/analysis")}>個別分析を開く</Button>}>
                 ランキング生成中も個別銘柄の分析を利用できます。
               </Alert>
