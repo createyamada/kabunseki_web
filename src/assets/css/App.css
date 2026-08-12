@@ -285,6 +285,36 @@
   border-radius: 16px !important;
 }
 
+.analysis-hybrid-panel {
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff 0%, #fff 48%);
+}
+
+.analysis-hybrid-weights {
+  display: flex;
+  min-height: 38px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #e2e8f0;
+}
+
+.analysis-hybrid-weights > div {
+  display: grid;
+  min-width: 0;
+  padding: 8px;
+  place-items: center;
+  color: #fff;
+  background: #2563eb;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.analysis-hybrid-weights > div + div {
+  background: #7c3aed;
+}
+
 .analysis-section-title {
   margin-bottom: 18px !important;
   font-size: 1.15rem !important;
@@ -802,6 +832,14 @@
   display: block;
   color: #64748b;
   font-size: 0.7rem;
+}
+
+.ranking-evidence {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+  color: #475569;
+  font-size: 0.67rem;
 }
 
 .ranking-factors {

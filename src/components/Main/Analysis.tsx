@@ -53,9 +53,33 @@ interface Backtest {
 }
 
 interface ModelResult {
-  walk_forward_rmse: number;
-  fold_scores: number[];
+  walk_forward_rmse?: number;
+  fold_scores?: number[];
   holdout_rmse: number;
+  global_weight?: number;
+}
+
+interface HybridModel {
+  available: boolean;
+  reason?: string;
+  method?: string;
+  stock_specific_model?: string;
+  global_weight?: number;
+  stock_specific_weight?: number;
+  local_holdout_rmse?: number;
+  global_holdout_rmse?: number;
+  sector_correction?: number;
+  global_model_used?: boolean;
+  global_model?: {
+    model_version: string;
+    market_date: string;
+    selected_model: string;
+    validation_rmse: number;
+    validation_rank_ic?: number;
+    training_rows: number;
+    stock_count: number;
+    sector_count: number;
+  };
 }
 
 interface PersistenceSummary {
@@ -201,6 +225,7 @@ interface Prediction {
   topological_analysis_multi_window?: TopologyMultiWindow | null;
   fundamental_analysis?: FundamentalAnalysis;
   metrics?: Metrics;
+  hybrid_model?: HybridModel;
 }
 
 interface ApiResponse {
@@ -381,6 +406,7 @@ const Analysis: React.FC = () => {
     (left, right) => left.horizon_business_days - right.horizon_business_days
   );
   const confidence = prediction?.confidence;
+  const hybridModel = prediction?.hybrid_model;
 
   const chartData = {
     labels,
@@ -554,6 +580,49 @@ const Analysis: React.FC = () => {
               note="時系列交差検証で選択"
             />
           </Box>
+
+          {hybridModel?.available && (
+            <Paper className="analysis-panel analysis-hybrid-panel" elevation={0}>
+              <Typography component="h3" className="analysis-section-title">
+                予測モデルの根拠
+              </Typography>
+              <Typography className="analysis-section-description">
+                銘柄固有の値動きと市場全体・業種の傾向を、直近の検証誤差に応じて組み合わせています。
+              </Typography>
+              <Box className="analysis-hybrid-weights">
+                <Box style={{ width: `${(hybridModel.stock_specific_weight ?? 1) * 100}%` }}>
+                  銘柄固有 {formatPercent(hybridModel.stock_specific_weight)}
+                </Box>
+                {(hybridModel.global_weight ?? 0) > 0 && (
+                  <Box style={{ width: `${(hybridModel.global_weight ?? 0) * 100}%` }}>
+                    市場・業種 {formatPercent(hybridModel.global_weight)}
+                  </Box>
+                )}
+              </Box>
+              <Box className="analysis-detail-grid">
+                <MetricCard
+                  label="銘柄別モデルの検証誤差"
+                  value={formatPercent(hybridModel.local_holdout_rmse)}
+                  note={modelName(hybridModel.stock_specific_model)}
+                />
+                <MetricCard
+                  label="市場共通モデルの検証誤差"
+                  value={formatPercent(hybridModel.global_holdout_rmse)}
+                  note={hybridModel.global_model_used ? "最終予測に採用" : "精度基準により不採用"}
+                />
+                <MetricCard
+                  label="業種補正"
+                  value={formatPercent(hybridModel.sector_correction)}
+                  note="同業種の残差傾向による補正"
+                />
+                <MetricCard
+                  label="共通モデル学習規模"
+                  value={`${(hybridModel.global_model?.stock_count ?? 0).toLocaleString()}銘柄`}
+                  note={`${(hybridModel.global_model?.training_rows ?? 0).toLocaleString()}件・${hybridModel.global_model?.market_date ?? "—"}時点`}
+                />
+              </Box>
+            </Paper>
+          )}
 
           {(directionClassifier?.available || returnRisk?.available) && (
             <Paper className="analysis-panel analysis-risk-panel" elevation={0}>

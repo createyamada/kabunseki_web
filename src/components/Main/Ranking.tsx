@@ -36,6 +36,16 @@ interface RankingItem {
   fundamental_score?: number | null;
   fundamental_data_coverage?: number | null;
   topological_regime?: string;
+  global_predicted_return?: number | null;
+  global_model_rank?: number | null;
+  expected_rank?: number | null;
+  probability_rank?: number | null;
+  excess_rank?: number | null;
+  reward_risk_rank?: number | null;
+  loss_safety_rank?: number | null;
+  confidence_rank?: number | null;
+  screening_rank?: number | null;
+  fundamental_rank?: number | null;
   positive_factors?: string[];
   risk_factors?: string[];
 }
@@ -77,6 +87,9 @@ const companyName = (item: RankingItem) =>
 
 const formatPercent = (value?: number | null) =>
   Number.isFinite(value) ? `${((value as number) * 100).toFixed(2)}%` : "—";
+
+const formatRank = (value?: number | null) =>
+  Number.isFinite(value) ? `上位 ${Math.max(1, Math.round((1 - (value as number)) * 100))}%` : "—";
 
 const regimeName = (value?: string) => ({
   low_topological_complexity: "低",
@@ -196,6 +209,7 @@ const Ranking: React.FC = () => {
                 <TableCell>順位</TableCell>
                 <TableCell>銘柄</TableCell>
                 <TableCell align="right">総合スコア</TableCell>
+                <TableCell align="right">共通モデル</TableCell>
                 <TableCell align="right">5日予測</TableCell>
                 <TableCell align="right">上昇確率</TableCell>
                 <TableCell align="right">期待値</TableCell>
@@ -218,6 +232,10 @@ const Ranking: React.FC = () => {
                     </Box>
                   </TableCell>
                   <TableCell align="right"><strong className="ranking-score">{item.total_score.toFixed(1)}</strong></TableCell>
+                  <TableCell align="right" className={(item.global_predicted_return ?? 0) >= 0 ? "value-positive" : "value-negative"}>
+                    <strong>{formatPercent(item.global_predicted_return)}</strong>
+                    <small className="ranking-submetric">{formatRank(item.global_model_rank)}</small>
+                  </TableCell>
                   <TableCell align="right" className={(item.predicted_return_5d ?? 0) >= 0 ? "value-positive" : "value-negative"}>{formatPercent(item.predicted_return_5d)}</TableCell>
                   <TableCell align="right">{formatPercent(item.up_probability_5d)}</TableCell>
                   <TableCell align="right" className={(item.expected_value ?? 0) >= 0 ? "value-positive" : "value-negative"}>{formatPercent(item.expected_value)}</TableCell>
@@ -225,6 +243,13 @@ const Ranking: React.FC = () => {
                   <TableCell>
                     <span className={`ranking-signal is-${item.trade_signal}`}>{item.trade_signal ?? "—"}</span>
                     <small className="ranking-submetric">健全性 {item.confidence_score ?? "—"} / 財務 {item.fundamental_score ?? "—"} / TDA {regimeName(item.topological_regime)}</small>
+                    <Box className="ranking-evidence" aria-label="ランキング根拠">
+                      <span>期待値 {formatRank(item.expected_rank)}</span>
+                      <span>上昇確率 {formatRank(item.probability_rank)}</span>
+                      <span>超過収益 {formatRank(item.excess_rank)}</span>
+                      <span>損失耐性 {formatRank(item.loss_safety_rank)}</span>
+                      <span>リスクリワード {formatRank(item.reward_risk_rank)}</span>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}

@@ -1,5 +1,17 @@
 # Getting Started with Create React App
 
+## One-click local startup
+
+- macOS: Double-click `start-mac.command`.
+- Windows: Double-click `start-windows.bat`.
+
+Node.js and npm must be installed. On the first run, the launcher installs the
+dependencies automatically and then opens the app at
+[http://localhost:3000](http://localhost:3000).
+
+The API server configured by `REACT_APP_KABUMMIKE_URL` must be started
+separately to use features that access the backend.
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
