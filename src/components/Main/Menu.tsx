@@ -12,7 +12,7 @@ const Menu: React.FC = () => {
           日本株分析ダッシュボード
         </Typography>
         <Typography className="analysis-subtitle">
-          目的に合わせて、個別銘柄の詳細分析またはプライム市場ランキングを選択してください。
+          個別銘柄分析、ランキング、特徴量の評価履歴を目的に合わせて選択してください。
         </Typography>
       </Box>
       <Box className="menu-grid">
@@ -25,6 +25,14 @@ const Menu: React.FC = () => {
           <Button variant="contained" onClick={() => navigate("/analysis")}>
             個別分析を開く
           </Button>
+        </Paper>
+        <Paper className="menu-card" elevation={0}>
+          <span className="menu-card-number">03</span>
+          <Typography component="h2">特徴量選択モニター</Typography>
+          <Typography>
+            各特徴量の除外判定回数、除外率、重要度、シャドー検証の結果を一覧で確認します。
+          </Typography>
+          <Button variant="contained" onClick={() => navigate("/feature-selection")}>特徴量を確認</Button>
         </Paper>
         <Paper className="menu-card is-ranking" elevation={0}>
           <span className="menu-card-number">02</span>

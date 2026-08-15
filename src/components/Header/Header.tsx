@@ -45,6 +45,7 @@ const Header: React.FC<ComponentProps> = ({ className }) => {
           </Typography>
           <Button color="inherit" onClick={() => navigate("/analysis")}>個別分析</Button>
           <Button color="inherit" onClick={() => navigate("/ranking")}>ランキング</Button>
+          <Button color="inherit" onClick={() => navigate("/feature-selection")}>特徴量</Button>
         </Toolbar>
       </AppBar>
     </Box>

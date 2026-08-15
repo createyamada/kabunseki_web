@@ -600,13 +600,33 @@
 }
 
 .menu-page,
-.ranking-page {
+.ranking-page,
+.feature-selection-page {
   max-width: 1180px;
   margin: 0 auto;
   padding: 56px 0 72px;
   text-align: left;
   color: #0f172a;
 }
+
+.feature-selection-summary,
+.feature-selection-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 16px;
+}
+
+.feature-selection-summary span { min-width: 130px; color: #475569; }
+.feature-selection-summary strong { display: block; font-size: 1.4rem; color: #0f172a; }
+.feature-selection-table { border: 1px solid #e2e8f0; overflow-x: auto; }
+.feature-selection-table th { white-space: nowrap; font-weight: 700; background: #f8fafc; }
+.feature-selection-table td { white-space: nowrap; }
+.feature-selection-table td:first-child small { display: block; color: #64748b; }
+.feature-status.is-exclusion_candidate { background: #fef3c7; color: #92400e; }
+.feature-status.is-shadow_excluded { background: #dbeafe; color: #1e40af; }
+.feature-status.is-removed { background: #fee2e2; color: #991b1b; }
 
 .menu-hero {
   max-width: 760px;
